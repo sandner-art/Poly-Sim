@@ -1,8 +1,8 @@
 # Poly-Sim: A Unified Simulator of Self-Organizing Networks
 
-[![Test Online](https://img.shields.io/badge/Play-Online-brightgreen?style=for-the-badge)](https://github.io/sandner-art/Poly-Sim) [![Updates](https://img.shields.io/badge/Updates-blue?style=for-the-badge)](updates.md)
+[![Test Online](https://img.shields.io/badge/Play-Online-brightgreen?style=for-the-badge)](https://sandner-art.github.io/Poly-Sim/) [![Updates](https://img.shields.io/badge/Updates-blue?style=for-the-badge)](updates.md)
 
-
+https://sandner-art.github.io/Poly-Sim/
 Author: Daniel Sandner, September 2025
 
 Interactive, real-time art application for mobile devices that simulates and visualizes a universal principle of self-organization. It generates and compares complex, filamentary networks based on a single, unified algorithm. 
