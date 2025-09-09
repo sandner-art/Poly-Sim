@@ -1,0 +1,883 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Poly-Sim: Self-Organizing Networks</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: #000;
+            font-family: 'Arial', sans-serif;
+            overflow: hidden;
+            touch-action: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        canvas {
+            display: block;
+            cursor: crosshair;
+            touch-action: none;
+        }
+        
+        .ui-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            z-index: 100;
+        }
+        
+        .controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 20px;
+            border-radius: 15px;
+            color: white;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: transform 0.3s ease, opacity 0.3s ease;
+            pointer-events: auto;
+            max-width: 400px;
+            margin: 0 auto;
+        }
+        
+        .controls.collapsed {
+            transform: translateY(-80%);
+            opacity: 0.7;
+        }
+        
+        .controls-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            cursor: pointer;
+        }
+        
+        .controls-header h3 {
+            margin: 0;
+            font-size: 18px;
+        }
+        
+        .toggle-btn {
+            width: 30px;
+            height: 30px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            transition: background 0.3s ease;
+        }
+        
+        .toggle-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        .controls-content {
+            transition: opacity 0.3s ease, max-height 0.3s ease;
+            overflow: hidden;
+        }
+        
+        .controls.collapsed .controls-content {
+            opacity: 0;
+            max-height: 0;
+        }
+        
+        .preset-selector {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .preset-btn {
+            padding: 12px 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        
+        .preset-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        .preset-btn.active {
+            background: rgba(100, 200, 255, 0.4);
+            border-color: rgba(100, 200, 255, 0.6);
+            box-shadow: 0 0 10px rgba(100, 200, 255, 0.3);
+        }
+        
+        .preset-btn.physarum.active {
+            background: rgba(100, 255, 100, 0.4);
+            border-color: rgba(100, 255, 100, 0.6);
+            box-shadow: 0 0 10px rgba(100, 255, 100, 0.3);
+        }
+        
+        .preset-btn.plasma.active {
+            background: rgba(100, 150, 255, 0.4);
+            border-color: rgba(100, 150, 255, 0.6);
+            box-shadow: 0 0 10px rgba(100, 150, 255, 0.3);
+        }
+        
+        .preset-btn.neural.active {
+            background: rgba(0, 255, 255, 0.4);
+            border-color: rgba(0, 255, 255, 0.6);
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.3);
+        }
+        
+        .control-group {
+            margin-bottom: 15px;
+        }
+        
+        .control-group label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 12px;
+            opacity: 0.9;
+        }
+        
+        .slider {
+            width: 100%;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+            outline: none;
+            -webkit-appearance: none;
+            appearance: none;
+        }
+        
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            background: #fff;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+        }
+        
+        .slider::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            background: #fff;
+            border-radius: 50%;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+        }
+        
+        .button-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .action-btn {
+            padding: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            color: white;
+            cursor: pointer;
+            text-align: center;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+        
+        .reset-btn {
+            background: rgba(255, 100, 100, 0.3);
+            border-color: rgba(255, 100, 100, 0.5);
+        }
+        
+        .reset-btn:hover {
+            background: rgba(255, 100, 100, 0.5);
+        }
+        
+        .pause-btn {
+            background: rgba(255, 200, 100, 0.3);
+            border-color: rgba(255, 200, 100, 0.5);
+        }
+        
+        .pause-btn:hover {
+            background: rgba(255, 200, 100, 0.5);
+        }
+        
+        .info {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 15px;
+            border-radius: 10px;
+            color: white;
+            font-size: 12px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            pointer-events: auto;
+            transition: opacity 0.3s ease;
+        }
+        
+        .info.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        
+        .fps-counter {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 12px;
+            pointer-events: auto;
+        }
+        
+        @media (max-width: 480px) {
+            .controls {
+                left: 10px;
+                right: 10px;
+                top: 10px;
+                padding: 15px;
+            }
+            
+            .info {
+                left: 10px;
+                right: 10px;
+                bottom: 10px;
+            }
+            
+            .preset-btn {
+                padding: 10px 4px;
+                font-size: 12px;
+            }
+        }
+        
+        @media (orientation: landscape) and (max-height: 500px) {
+            .controls {
+                max-height: 60vh;
+                overflow-y: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    
+    <div class="ui-overlay">
+        <div class="controls" id="controls">
+            <div class="controls-header" onclick="toggleControls()">
+                <h3>Poly-Sim</h3>
+                <div class="toggle-btn" id="toggleBtn">▼</div>
+            </div>
+            
+            <div class="controls-content">
+                <div class="preset-selector">
+                    <div class="preset-btn physarum active" data-preset="physarum">Physarum</div>
+                    <div class="preset-btn plasma" data-preset="plasma">Plasma</div>
+                    <div class="preset-btn neural" data-preset="neural">Neural</div>
+                </div>
+                
+                <div class="control-group">
+                    <label>Agent Count <span id="agentCountValue">50000</span></label>
+                    <input type="range" class="slider" id="agentCount" min="10000" max="200000" value="50000" step="10000">
+                </div>
+                
+                <div class="control-group">
+                    <label>Sensor Angle <span id="sensorAngleValue">22.5°</span></label>
+                    <input type="range" class="slider" id="sensorAngle" min="10" max="90" value="22.5" step="2.5">
+                </div>
+                
+                <div class="control-group">
+                    <label>Decay Rate <span id="decayRateValue">0.980</span></label>
+                    <input type="range" class="slider" id="decayRate" min="0.900" max="0.999" value="0.980" step="0.001">
+                </div>
+                
+                <div class="control-group">
+                    <label>Deposit Strength <span id="depositStrengthValue">0.10</span></label>
+                    <input type="range" class="slider" id="depositStrength" min="0.01" max="0.5" value="0.10" step="0.01">
+                </div>
+                
+                <div class="control-group">
+                    <label>Speed <span id="speedValue">1.0</span></label>
+                    <input type="range" class="slider" id="speed" min="0.1" max="5.0" value="1.0" step="0.1">
+                </div>
+                
+                <div class="button-row">
+                    <div class="action-btn reset-btn" onclick="resetSimulation()">Reset</div>
+                    <div class="action-btn pause-btn" onclick="togglePause()">Pause</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="fps-counter" id="fpsCounter">60 FPS</div>
+        
+        <div class="info" id="info">
+            <strong>Touch and drag to spawn agents</strong><br>
+            Each preset simulates the same flow-reinforcement principle<br>
+            <small>Tap here to hide • Tap controls header to collapse</small>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let canvas, gl;
+        let width, height;
+        let animationId;
+        let isPaused = false;
+        
+        // Simulation state
+        let agents = [];
+        let conductivityField = [];
+        let tempField = [];
+        
+        // Performance tracking
+        let frameCount = 0;
+        let lastTime = 0;
+        let fps = 60;
+        
+        // Simulation parameters
+        let params = {
+            agentCount: 50000,
+            sensorAngle: 22.5 * Math.PI / 180,
+            sensorDistance: 9.0,
+            stepSize: 1.0,
+            decayRate: 0.980,
+            depositStrength: 0.10,
+            speed: 1.0,
+            diffusionRate: 0.1
+        };
+        
+        // Presets
+        const presets = {
+            physarum: {
+                agentCount: 50000,
+                sensorAngle: 22.5 * Math.PI / 180,
+                decayRate: 0.980,
+                depositStrength: 0.10,
+                speed: 1.0,
+                colors: {
+                    color1: [0.1, 0.05, 0.0],
+                    color2: [0.4, 0.8, 0.2],
+                    color3: [0.9, 0.9, 0.4]
+                },
+                diffusionRate: 0.3
+            },
+            plasma: {
+                agentCount: 80000,
+                sensorAngle: 45 * Math.PI / 180,
+                decayRate: 0.950,
+                depositStrength: 0.20,
+                speed: 2.5,
+                colors: {
+                    color1: [0.0, 0.0, 0.1],
+                    color2: [0.3, 0.1, 0.8],
+                    color3: [0.9, 0.7, 1.0]
+                },
+                diffusionRate: 0.1
+            },
+            neural: {
+                agentCount: 30000,
+                sensorAngle: 30 * Math.PI / 180,
+                decayRate: 0.995,
+                depositStrength: 0.05,
+                speed: 0.8,
+                colors: {
+                    color1: [0.0, 0.1, 0.2],
+                    color2: [0.0, 0.6, 0.9],
+                    color3: [0.4, 1.0, 1.0]
+                },
+                diffusionRate: 0.05
+            }
+        };
+        
+        let currentPreset = 'physarum';
+        
+        // Agent class for better organization
+        class Agent {
+            constructor(x, y, angle) {
+                this.x = x || Math.random() * width;
+                this.y = y || Math.random() * height;
+                this.angle = angle || Math.random() * Math.PI * 2;
+                this.dx = Math.cos(this.angle);
+                this.dy = Math.sin(this.angle);
+            }
+            
+            update() {
+                // Sample conductivity at sensor positions
+                const sensorDist = params.sensorDistance;
+                const sensorAngle = params.sensorAngle;
+                
+                const leftAngle = this.angle - sensorAngle;
+                const rightAngle = this.angle + sensorAngle;
+                
+                const leftX = this.x + Math.cos(leftAngle) * sensorDist;
+                const leftY = this.y + Math.sin(leftAngle) * sensorDist;
+                const rightX = this.x + Math.cos(rightAngle) * sensorDist;
+                const rightY = this.y + Math.sin(rightAngle) * sensorDist;
+                const centerX = this.x + Math.cos(this.angle) * sensorDist;
+                const centerY = this.y + Math.sin(this.angle) * sensorDist;
+                
+                const leftVal = sampleConductivity(leftX, leftY);
+                const rightVal = sampleConductivity(rightX, rightY);
+                const centerVal = sampleConductivity(centerX, centerY);
+                
+                // Determine steering direction
+                let steerAngle = 0;
+                if (centerVal > leftVal && centerVal > rightVal) {
+                    // Continue straight
+                    steerAngle = 0;
+                } else if (leftVal > rightVal) {
+                    steerAngle = -sensorAngle * 0.1;
+                } else if (rightVal > leftVal) {
+                    steerAngle = sensorAngle * 0.1;
+                } else {
+                    // Random steering when values are equal
+                    steerAngle = (Math.random() - 0.5) * sensorAngle * 0.2;
+                }
+                
+                // Apply steering
+                this.angle += steerAngle;
+                this.dx = Math.cos(this.angle);
+                this.dy = Math.sin(this.angle);
+                
+                // Move agent
+                this.x += this.dx * params.stepSize * params.speed;
+                this.y += this.dy * params.stepSize * params.speed;
+                
+                // Wrap around edges
+                this.x = (this.x + width) % width;
+                this.y = (this.y + height) % height;
+                
+                // Deposit trail
+                depositAt(Math.floor(this.x), Math.floor(this.y), params.depositStrength);
+            }
+        }
+        
+        function sampleConductivity(x, y) {
+            x = Math.floor((x + width) % width);
+            y = Math.floor((y + height) % height);
+            
+            if (x < 0 || x >= width || y < 0 || y >= height) return 0;
+            
+            const index = y * width + x;
+            return conductivityField[index] || 0;
+        }
+        
+        function depositAt(x, y, strength) {
+            if (x < 0 || x >= width || y < 0 || y >= height) return;
+            
+            const index = y * width + x;
+            conductivityField[index] = Math.min(1.0, (conductivityField[index] || 0) + strength);
+        }
+        
+        function initializeSimulation() {
+            // Initialize conductivity field
+            conductivityField = new Float32Array(width * height);
+            tempField = new Float32Array(width * height);
+            
+            // Initialize agents
+            agents = [];
+            const centerX = width * 0.5;
+            const centerY = height * 0.5;
+            const radius = Math.min(width, height) * 0.3;
+            
+            for (let i = 0; i < params.agentCount; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const r = Math.random() * radius;
+                const x = centerX + Math.cos(angle) * r;
+                const y = centerY + Math.sin(angle) * r;
+                agents.push(new Agent(x, y, angle));
+            }
+        }
+        
+        function updateSimulation() {
+            if (isPaused) return;
+            
+            // Update agents
+            for (let agent of agents) {
+                agent.update();
+            }
+            
+            // Apply decay and diffusion
+            for (let i = 0; i < conductivityField.length; i++) {
+                conductivityField[i] *= params.decayRate;
+            }
+            
+            // Simple diffusion (blur)
+            applyDiffusion();
+        }
+        
+        function applyDiffusion() {
+            const diffusion = presets[currentPreset].diffusionRate;
+            
+            for (let y = 1; y < height - 1; y++) {
+                for (let x = 1; x < width - 1; x++) {
+                    const index = y * width + x;
+                    
+                    let sum = 0;
+                    sum += conductivityField[index - width - 1] * 0.05; // Top-left
+                    sum += conductivityField[index - width] * 0.1;     // Top
+                    sum += conductivityField[index - width + 1] * 0.05; // Top-right
+                    sum += conductivityField[index - 1] * 0.1;         // Left
+                    sum += conductivityField[index] * 0.4;             // Center
+                    sum += conductivityField[index + 1] * 0.1;         // Right
+                    sum += conductivityField[index + width - 1] * 0.05; // Bottom-left
+                    sum += conductivityField[index + width] * 0.1;     // Bottom
+                    sum += conductivityField[index + width + 1] * 0.05; // Bottom-right
+                    
+                    tempField[index] = conductivityField[index] * (1 - diffusion) + sum * diffusion;
+                }
+            }
+            
+            // Swap arrays
+            [conductivityField, tempField] = [tempField, conductivityField];
+        }
+        
+        function renderSimulation() {
+            if (!canvas || !canvas.getContext) return;
+            
+            const ctx = canvas.getContext('2d');
+            const imageData = ctx.createImageData(width, height);
+            const data = imageData.data;
+            
+            const colors = presets[currentPreset].colors;
+            
+            for (let i = 0; i < conductivityField.length; i++) {
+                let intensity = conductivityField[i];
+                intensity = Math.pow(Math.min(1, intensity), 0.5); // Gamma correction
+                
+                let r, g, b;
+                
+                if (intensity < 0.5) {
+                    const t = intensity * 2;
+                    r = colors.color1[0] * (1 - t) + colors.color2[0] * t;
+                    g = colors.color1[1] * (1 - t) + colors.color2[1] * t;
+                    b = colors.color1[2] * (1 - t) + colors.color2[2] * t;
+                } else {
+                    const t = (intensity - 0.5) * 2;
+                    r = colors.color2[0] * (1 - t) + colors.color3[0] * t;
+                    g = colors.color2[1] * (1 - t) + colors.color3[1] * t;
+                    b = colors.color2[2] * (1 - t) + colors.color3[2] * t;
+                }
+                
+                const pixelIndex = i * 4;
+                data[pixelIndex] = r * 255;     // Red
+                data[pixelIndex + 1] = g * 255; // Green
+                data[pixelIndex + 2] = b * 255; // Blue
+                data[pixelIndex + 3] = 255;     // Alpha
+            }
+            
+            ctx.putImageData(imageData, 0, 0);
+        }
+        
+        function animate(currentTime) {
+            // Calculate FPS
+            frameCount++;
+            if (currentTime - lastTime >= 1000) {
+                fps = Math.round(frameCount * 1000 / (currentTime - lastTime));
+                document.getElementById('fpsCounter').textContent = fps + ' FPS';
+                frameCount = 0;
+                lastTime = currentTime;
+            }
+            
+            updateSimulation();
+            renderSimulation();
+            
+            animationId = requestAnimationFrame(animate);
+        }
+        
+        function resize() {
+            const dpr = window.devicePixelRatio || 1;
+            const rect = canvas.getBoundingClientRect();
+            
+            // Set canvas size considering device pixel ratio
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+            
+            // Scale canvas back down using CSS
+            canvas.style.width = rect.width + 'px';
+            canvas.style.height = rect.height + 'px';
+            
+            // Update simulation dimensions (keep reasonable resolution for performance)
+            width = Math.min(canvas.width, 800);
+            height = Math.min(canvas.height, 600);
+            
+            // Maintain aspect ratio
+            if (canvas.width > canvas.height) {
+                width = Math.floor(height * (canvas.width / canvas.height));
+            } else {
+                height = Math.floor(width * (canvas.height / canvas.width));
+            }
+            
+            initializeSimulation();
+        }
+        
+        function init() {
+            canvas = document.getElementById('canvas');
+            
+            // Make canvas fill viewport
+            canvas.style.position = 'fixed';
+            canvas.style.top = '0';
+            canvas.style.left = '0';
+            canvas.style.width = '100vw';
+            canvas.style.height = '100vh';
+            
+            resize();
+            setupEventListeners();
+            animate(0);
+            
+            // Hide info after 5 seconds
+            setTimeout(() => {
+                document.getElementById('info').classList.add('hidden');
+            }, 5000);
+        }
+        
+        function setupEventListeners() {
+            // Resize handler
+            window.addEventListener('resize', resize);
+            
+            // Touch and mouse events for spawning agents
+            let isDrawing = false;
+            
+            function startDrawing(x, y) {
+                isDrawing = true;
+                spawnAgentsAt(x, y);
+            }
+            
+            function continueDrawing(x, y) {
+                if (isDrawing) {
+                    spawnAgentsAt(x, y);
+                }
+            }
+            
+            function stopDrawing() {
+                isDrawing = false;
+            }
+            
+            // Mouse events
+            canvas.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                startDrawing(e.clientX, e.clientY);
+            });
+            
+            canvas.addEventListener('mousemove', (e) => {
+                e.preventDefault();
+                continueDrawing(e.clientX, e.clientY);
+            });
+            
+            canvas.addEventListener('mouseup', stopDrawing);
+            canvas.addEventListener('mouseleave', stopDrawing);
+            
+            // Touch events
+            canvas.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                const touch = e.touches[0];
+                startDrawing(touch.clientX, touch.clientY);
+            });
+            
+            canvas.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+                const touch = e.touches[0];
+                continueDrawing(touch.clientX, touch.clientY);
+            });
+            
+            canvas.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                stopDrawing();
+            });
+            
+            // Prevent context menu on long press
+            canvas.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+            });
+            
+            // Control event listeners
+            setupControlListeners();
+        }
+        
+        function setupControlListeners() {
+            // Preset buttons
+            document.querySelectorAll('.preset-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    setPreset(btn.dataset.preset);
+                });
+            });
+            
+            // Slider event listeners
+            document.getElementById('agentCount').addEventListener('input', (e) => {
+                params.agentCount = parseInt(e.target.value);
+                updateSliderDisplays();
+                initializeSimulation();
+            });
+            
+            document.getElementById('sensorAngle').addEventListener('input', (e) => {
+                params.sensorAngle = parseFloat(e.target.value) * Math.PI / 180;
+                updateSliderDisplays();
+            });
+            
+            document.getElementById('decayRate').addEventListener('input', (e) => {
+                params.decayRate = parseFloat(e.target.value);
+                updateSliderDisplays();
+            });
+            
+            document.getElementById('depositStrength').addEventListener('input', (e) => {
+                params.depositStrength = parseFloat(e.target.value);
+                updateSliderDisplays();
+            });
+            
+            document.getElementById('speed').addEventListener('input', (e) => {
+                params.speed = parseFloat(e.target.value);
+                updateSliderDisplays();
+            });
+            
+            // Info panel click to hide
+            document.getElementById('info').addEventListener('click', () => {
+                document.getElementById('info').classList.add('hidden');
+            });
+        }
+        
+        function spawnAgentsAt(screenX, screenY) {
+            const rect = canvas.getBoundingClientRect();
+            const x = (screenX - rect.left) / rect.width * width;
+            const y = (screenY - rect.top) / rect.height * height;
+            
+            // Spawn multiple agents in a small radius
+            const spawnCount = Math.min(100, Math.floor(params.agentCount * 0.001));
+            for (let i = 0; i < spawnCount; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const radius = Math.random() * 20;
+                const agentX = x + Math.cos(angle) * radius;
+                const agentY = y + Math.sin(angle) * radius;
+                
+                // Replace a random existing agent or add new one
+                const index = Math.floor(Math.random() * agents.length);
+                if (index < agents.length) {
+                    agents[index] = new Agent(agentX, agentY, angle);
+                }
+            }
+        }
+        
+        // UI Functions (now properly defined)
+        function toggleControls() {
+            const controls = document.getElementById('controls');
+            const toggleBtn = document.getElementById('toggleBtn');
+            
+            controls.classList.toggle('collapsed');
+            toggleBtn.textContent = controls.classList.contains('collapsed') ? '▲' : '▼';
+        }
+        
+        function setPreset(presetName) {
+            currentPreset = presetName;
+            
+            // Update active button
+            document.querySelectorAll('.preset-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.querySelector(`[data-preset="${presetName}"]`).classList.add('active');
+            
+            // Apply preset parameters
+            const preset = presets[presetName];
+            Object.assign(params, preset);
+            
+            // Update slider values
+            document.getElementById('agentCount').value = preset.agentCount;
+            document.getElementById('sensorAngle').value = preset.sensorAngle * 180 / Math.PI;
+            document.getElementById('decayRate').value = preset.decayRate;
+            document.getElementById('depositStrength').value = preset.depositStrength;
+            document.getElementById('speed').value = preset.speed;
+            
+            updateSliderDisplays();
+            initializeSimulation();
+        }
+        
+        function updateSliderDisplays() {
+            document.getElementById('agentCountValue').textContent = params.agentCount.toLocaleString();
+            document.getElementById('sensorAngleValue').textContent = (params.sensorAngle * 180 / Math.PI).toFixed(1) + '°';
+            document.getElementById('decayRateValue').textContent = params.decayRate.toFixed(3);
+            document.getElementById('depositStrengthValue').textContent = params.depositStrength.toFixed(2);
+            document.getElementById('speedValue').textContent = params.speed.toFixed(1);
+        }
+        
+        function resetSimulation() {
+            // Clear conductivity field
+            conductivityField.fill(0);
+            tempField.fill(0);
+            
+            // Reinitialize agents
+            initializeSimulation();
+        }
+        
+        function togglePause() {
+            isPaused = !isPaused;
+            const btn = document.querySelector('.pause-btn');
+            btn.textContent = isPaused ? 'Resume' : 'Pause';
+            
+            if (isPaused) {
+                btn.style.background = 'rgba(100, 255, 100, 0.3)';
+                btn.style.borderColor = 'rgba(100, 255, 100, 0.5)';
+            } else {
+                btn.style.background = 'rgba(255, 200, 100, 0.3)';
+                btn.style.borderColor = 'rgba(255, 200, 100, 0.5)';
+            }
+        }
+        
+        // Initialize the application when DOM is loaded
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
+        } else {
+            init();
+        }
+        
+        // Prevent zoom on double tap (mobile)
+        let lastTouchEnd = 0;
+        document.addEventListener('touchend', function (event) {
+            const now = (new Date()).getTime();
+            if (now - lastTouchEnd <= 300) {
+                event.preventDefault();
+            }
+            lastTouchEnd = now;
+        }, false);
+        
+        // Prevent pull-to-refresh
+        document.addEventListener('touchstart', function(e) {
+            if (e.touches.length > 1) {
+                e.preventDefault();
+            }
+        });
+        
+        document.addEventListener('touchmove', function(e) {
+            if (e.scale !== 1) {
+                e.preventDefault();
+            }
+        }, { passive: false });
+    </script>
+</body>
+</html>

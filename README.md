@@ -1,6 +1,6 @@
 # Poly-Sim: A Unified Simulator of Self-Organizing Networks
 
-[![Test Online](https://img.shields.io/badge/Play-Online-brightgreen?style=for-the-badge)](https://github.io/sandner-art/Poly-Sim)
+[![Test Online](https://img.shields.io/badge/Play-Online-brightgreen?style=for-the-badge)](https://github.io/sandner-art/Poly-Sim) [![Updates](https://img.shields.io/badge/Updates-blue?style=for-the-badge)](updates.md)
 
 
 Author: Daniel Sandner, September 2025
