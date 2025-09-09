@@ -37,24 +37,23 @@
         
         .controls {
             position: absolute;
-            top: 20px;
+            bottom: 20px;
             left: 20px;
             right: 20px;
-            background: rgba(0, 0, 0, 0.9);
+            background: rgba(0, 0, 0, 0.95);
             padding: 20px;
             border-radius: 15px;
             color: white;
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            transition: transform 0.3s ease, opacity 0.3s ease;
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            transition: all 0.3s ease;
             pointer-events: auto;
-            max-width: 400px;
-            margin: 0 auto;
+            max-height: 70vh;
+            overflow-y: auto;
         }
         
         .controls.collapsed {
-            transform: translateY(-80%);
-            opacity: 0.7;
+            transform: translateY(calc(100% - 60px));
         }
         
         .controls-header {
@@ -63,11 +62,40 @@
             align-items: center;
             margin-bottom: 15px;
             cursor: pointer;
+            padding: 5px;
+            border-radius: 8px;
+            transition: background 0.3s ease;
+        }
+        
+        .controls-header:hover {
+            background: rgba(255, 255, 255, 0.05);
         }
         
         .controls-header h3 {
             margin: 0;
             font-size: 18px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .gpu-indicator {
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: bold;
+        }
+        
+        .gpu-indicator.gpu-on {
+            background: rgba(76, 175, 80, 0.3);
+            border: 1px solid rgba(76, 175, 80, 0.5);
+            color: #4CAF50;
+        }
+        
+        .gpu-indicator.gpu-off {
+            background: rgba(255, 152, 0, 0.3);
+            border: 1px solid rgba(255, 152, 0, 0.5);
+            color: #FF9800;
         }
         
         .toggle-btn {
@@ -82,11 +110,12 @@
             align-items: center;
             justify-content: center;
             font-size: 16px;
-            transition: background 0.3s ease;
+            transition: all 0.3s ease;
         }
         
         .toggle-btn:hover {
             background: rgba(255, 255, 255, 0.2);
+            transform: scale(1.05);
         }
         
         .controls-content {
@@ -99,71 +128,116 @@
             max-height: 0;
         }
         
+        .section {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        
+        .section-title {
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 12px;
+            opacity: 0.9;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
         .preset-selector {
             display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
-            gap: 10px;
-            margin-bottom: 20px;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            margin-bottom: 12px;
         }
         
         .preset-btn {
-            padding: 12px 8px;
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 10px 8px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.15);
             border-radius: 8px;
             color: white;
             cursor: pointer;
             transition: all 0.3s ease;
             text-align: center;
-            font-size: 14px;
+            font-size: 12px;
             font-weight: bold;
         }
         
         .preset-btn:hover {
-            background: rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateY(-1px);
         }
         
         .preset-btn.active {
-            background: rgba(100, 200, 255, 0.4);
-            border-color: rgba(100, 200, 255, 0.6);
-            box-shadow: 0 0 10px rgba(100, 200, 255, 0.3);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(100, 200, 255, 0.4);
         }
         
         .preset-btn.physarum.active {
-            background: rgba(100, 255, 100, 0.4);
-            border-color: rgba(100, 255, 100, 0.6);
-            box-shadow: 0 0 10px rgba(100, 255, 100, 0.3);
+            background: rgba(100, 255, 100, 0.2);
+            border-color: rgba(100, 255, 100, 0.4);
         }
         
         .preset-btn.plasma.active {
-            background: rgba(100, 150, 255, 0.4);
-            border-color: rgba(100, 150, 255, 0.6);
-            box-shadow: 0 0 10px rgba(100, 150, 255, 0.3);
+            background: rgba(100, 150, 255, 0.2);
+            border-color: rgba(100, 150, 255, 0.4);
         }
         
         .preset-btn.neural.active {
-            background: rgba(0, 255, 255, 0.4);
-            border-color: rgba(0, 255, 255, 0.6);
-            box-shadow: 0 0 10px rgba(0, 255, 255, 0.3);
+            background: rgba(0, 255, 255, 0.2);
+            border-color: rgba(0, 255, 255, 0.4);
+        }
+        
+        .preset-btn.scientific.active {
+            background: rgba(255, 165, 0, 0.2);
+            border-color: rgba(255, 165, 0, 0.4);
+        }
+        
+        .color-mode-selector {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 6px;
+            margin-bottom: 12px;
+        }
+        
+        .color-mode-btn {
+            padding: 6px 4px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+            font-size: 10px;
+        }
+        
+        .color-mode-btn.active {
+            background: rgba(255, 165, 0, 0.3);
+            border-color: rgba(255, 165, 0, 0.5);
         }
         
         .control-group {
-            margin-bottom: 15px;
+            margin-bottom: 12px;
         }
         
         .control-group label {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 8px;
-            font-size: 12px;
+            align-items: center;
+            margin-bottom: 6px;
+            font-size: 11px;
             opacity: 0.9;
         }
         
         .slider {
             width: 100%;
-            height: 6px;
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 3px;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 2px;
             outline: none;
             -webkit-appearance: none;
             appearance: none;
@@ -172,8 +246,8 @@
         .slider::-webkit-slider-thumb {
             -webkit-appearance: none;
             appearance: none;
-            width: 20px;
-            height: 20px;
+            width: 16px;
+            height: 16px;
             background: #fff;
             border-radius: 50%;
             cursor: pointer;
@@ -181,8 +255,8 @@
         }
         
         .slider::-moz-range-thumb {
-            width: 20px;
-            height: 20px;
+            width: 16px;
+            height: 16px;
             background: #fff;
             border-radius: 50%;
             cursor: pointer;
@@ -190,45 +264,98 @@
             box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
         }
         
-        .button-row {
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+        
+        .checkbox-group input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+        }
+        
+        .checkbox-group label {
+            font-size: 11px;
+            margin: 0;
+        }
+        
+        .button-grid {
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            margin-top: 15px;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            margin-top: 12px;
+        }
+        
+        .button-grid.three-col {
+            grid-template-columns: repeat(3, 1fr);
         }
         
         .action-btn {
-            padding: 12px;
-            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 10px 8px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
             border-radius: 8px;
             color: white;
             cursor: pointer;
             text-align: center;
-            font-size: 14px;
+            font-size: 11px;
+            font-weight: bold;
             transition: all 0.3s ease;
+            text-transform: uppercase;
+        }
+        
+        .action-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
         }
         
         .reset-btn {
-            background: rgba(255, 100, 100, 0.3);
-            border-color: rgba(255, 100, 100, 0.5);
-        }
-        
-        .reset-btn:hover {
-            background: rgba(255, 100, 100, 0.5);
+            background: rgba(255, 100, 100, 0.2);
+            border-color: rgba(255, 100, 100, 0.4);
         }
         
         .pause-btn {
-            background: rgba(255, 200, 100, 0.3);
-            border-color: rgba(255, 200, 100, 0.5);
+            background: rgba(255, 200, 100, 0.2);
+            border-color: rgba(255, 200, 100, 0.4);
         }
         
-        .pause-btn:hover {
-            background: rgba(255, 200, 100, 0.5);
+        .maze-btn {
+            background: rgba(150, 100, 255, 0.2);
+            border-color: rgba(150, 100, 255, 0.4);
         }
         
-        .info {
+        .file-input-wrapper {
+            position: relative;
+            margin-bottom: 8px;
+        }
+        
+        .file-input {
             position: absolute;
-            bottom: 20px;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+        
+        .file-input-display {
+            padding: 8px 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 6px;
+            font-size: 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .file-input-display:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .info-panel {
+            position: absolute;
+            top: 20px;
             left: 20px;
             right: 20px;
             background: rgba(0, 0, 0, 0.85);
@@ -242,7 +369,7 @@
             transition: opacity 0.3s ease;
         }
         
-        .info.hidden {
+        .info-panel.hidden {
             opacity: 0;
             pointer-events: none;
         }
@@ -251,39 +378,67 @@
             position: absolute;
             top: 20px;
             right: 20px;
-            background: rgba(0, 0, 0, 0.7);
+            background: rgba(0, 0, 0, 0.8);
             color: white;
             padding: 8px 12px;
-            border-radius: 5px;
+            border-radius: 6px;
             font-family: monospace;
-            font-size: 12px;
+            font-size: 11px;
             pointer-events: auto;
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
         
-        @media (max-width: 480px) {
+        .version-info {
+            text-align: center;
+            padding: 12px;
+            font-size: 10px;
+            opacity: 0.6;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            margin-top: 15px;
+        }
+        
+        .version-info a {
+            color: #64B5F6;
+            text-decoration: none;
+        }
+        
+        .version-info a:hover {
+            text-decoration: underline;
+        }
+        
+        @media (max-width: 600px) {
             .controls {
                 left: 10px;
                 right: 10px;
-                top: 10px;
+                bottom: 10px;
                 padding: 15px;
             }
             
-            .info {
+            .info-panel {
                 left: 10px;
                 right: 10px;
-                bottom: 10px;
+                top: 10px;
             }
             
-            .preset-btn {
-                padding: 10px 4px;
-                font-size: 12px;
+            .preset-selector {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 6px;
+            }
+            
+            .color-mode-selector {
+                grid-template-columns: repeat(2, 1fr);
             }
         }
         
         @media (orientation: landscape) and (max-height: 500px) {
             .controls {
-                max-height: 60vh;
-                overflow-y: auto;
+                max-height: 80vh;
+                left: 10px;
+                right: 300px;
+            }
+            
+            .fps-counter {
+                right: 10px;
             }
         }
     </style>
@@ -294,74 +449,148 @@
     <div class="ui-overlay">
         <div class="controls" id="controls">
             <div class="controls-header" onclick="toggleControls()">
-                <h3>Poly-Sim</h3>
-                <div class="toggle-btn" id="toggleBtn">▼</div>
+                <h3>
+                    Poly-Sim 
+                    <span class="gpu-indicator" id="gpuIndicator">CPU</span>
+                </h3>
+                <div class="toggle-btn" id="toggleBtn">▲</div>
             </div>
             
             <div class="controls-content">
-                <div class="preset-selector">
-                    <div class="preset-btn physarum active" data-preset="physarum">Physarum</div>
-                    <div class="preset-btn plasma" data-preset="plasma">Plasma</div>
-                    <div class="preset-btn neural" data-preset="neural">Neural</div>
+                <!-- Simulation Presets -->
+                <div class="section">
+                    <div class="section-title">Simulation Mode</div>
+                    <div class="preset-selector">
+                        <div class="preset-btn physarum active" data-preset="physarum">Physarum</div>
+                        <div class="preset-btn plasma" data-preset="plasma">Plasma</div>
+                        <div class="preset-btn neural" data-preset="neural">Neural</div>
+                        <div class="preset-btn scientific" data-preset="scientific">Scientific</div>
+                    </div>
+                    <div class="color-mode-selector">
+                        <div class="color-mode-btn active" data-mode="natural">Natural</div>
+                        <div class="color-mode-btn" data-mode="scientific">Analysis</div>
+                        <div class="color-mode-btn" data-mode="thermal">Thermal</div>
+                        <div class="color-mode-btn" data-mode="neon">Neon</div>
+                    </div>
                 </div>
                 
-                <div class="control-group">
-                    <label>Agent Count <span id="agentCountValue">50000</span></label>
-                    <input type="range" class="slider" id="agentCount" min="10000" max="200000" value="50000" step="10000">
+                <!-- Environment Controls -->
+                <div class="section">
+                    <div class="section-title">Environment</div>
+                    <div class="file-input-wrapper">
+                        <input type="file" class="file-input" id="maskInput" accept="image/*">
+                        <div class="file-input-display">Load Environment Mask</div>
+                    </div>
+                    <div class="button-grid three-col">
+                        <div class="action-btn maze-btn" onclick="generateMaze()">Gen Maze</div>
+                        <div class="action-btn maze-btn" onclick="clearMask()">Clear</div>
+                        <div class="action-btn maze-btn" onclick="invertMask()">Invert</div>
+                    </div>
                 </div>
                 
-                <div class="control-group">
-                    <label>Sensor Angle <span id="sensorAngleValue">22.5°</span></label>
-                    <input type="range" class="slider" id="sensorAngle" min="10" max="90" value="22.5" step="2.5">
+                <!-- Performance Settings -->
+                <div class="section">
+                    <div class="section-title">Performance</div>
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="gpuToggle">
+                        <label for="gpuToggle">GPU Acceleration <span id="gpuStatus">(Checking...)</span></label>
+                    </div>
+                    <div class="control-group">
+                        <label>Agent Count <span id="agentCountValue">50000</span></label>
+                        <input type="range" class="slider" id="agentCount" min="5000" max="100000" value="50000" step="5000">
+                    </div>
                 </div>
                 
-                <div class="control-group">
-                    <label>Decay Rate <span id="decayRateValue">0.980</span></label>
-                    <input type="range" class="slider" id="decayRate" min="0.900" max="0.999" value="0.980" step="0.001">
+                <!-- Simulation Parameters -->
+                <div class="section">
+                    <div class="section-title">Parameters</div>
+                    <div class="control-group">
+                        <label>Sensor Angle <span id="sensorAngleValue">22.5°</span></label>
+                        <input type="range" class="slider" id="sensorAngle" min="5" max="90" value="22.5" step="2.5">
+                    </div>
+                    <div class="control-group">
+                        <label>Decay Rate <span id="decayRateValue">0.980</span></label>
+                        <input type="range" class="slider" id="decayRate" min="0.900" max="0.999" value="0.980" step="0.001">
+                    </div>
+                    <div class="control-group">
+                        <label>Deposit Strength <span id="depositStrengthValue">0.10</span></label>
+                        <input type="range" class="slider" id="depositStrength" min="0.01" max="0.5" value="0.10" step="0.01">
+                    </div>
+                    <div class="control-group">
+                        <label>Speed <span id="speedValue">1.0</span></label>
+                        <input type="range" class="slider" id="speed" min="0.1" max="5.0" value="1.0" step="0.1">
+                    </div>
                 </div>
                 
-                <div class="control-group">
-                    <label>Deposit Strength <span id="depositStrengthValue">0.10</span></label>
-                    <input type="range" class="slider" id="depositStrength" min="0.01" max="0.5" value="0.10" step="0.01">
+                <!-- Advanced Features -->
+                <div class="section">
+                    <div class="section-title">Neural Features</div>
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="neuronFiring">
+                        <label for="neuronFiring">Simulate Neuron Firing</label>
+                    </div>
+                    <div class="control-group">
+                        <label>Firing Rate <span id="firingRateValue">0.02</span></label>
+                        <input type="range" class="slider" id="firingRate" min="0.001" max="0.1" value="0.02" step="0.001">
+                    </div>
                 </div>
                 
-                <div class="control-group">
-                    <label>Speed <span id="speedValue">1.0</span></label>
-                    <input type="range" class="slider" id="speed" min="0.1" max="5.0" value="1.0" step="0.1">
-                </div>
-                
-                <div class="button-row">
+                <!-- Action Buttons -->
+                <div class="button-grid">
                     <div class="action-btn reset-btn" onclick="resetSimulation()">Reset</div>
                     <div class="action-btn pause-btn" onclick="togglePause()">Pause</div>
+                </div>
+                
+                <!-- Version Info -->
+                <div class="version-info">
+                    <a href="https://github.io/sandner-art/Poly-Sim" target="_blank">Poly-Sim</a> v0.7.0<br>
+                    © Daniel Sandner • <a href="https://sandner.art" target="_blank">sandner.art</a>
                 </div>
             </div>
         </div>
         
         <div class="fps-counter" id="fpsCounter">60 FPS</div>
         
-        <div class="info" id="info">
+        <div class="info-panel" id="infoPanel">
             <strong>Touch and drag to spawn agents</strong><br>
-            Each preset simulates the same flow-reinforcement principle<br>
-            <small>Tap here to hide • Tap controls header to collapse</small>
+            Each preset simulates flow-reinforced conductivity principles<br>
+            <small>Tap here to hide • Tap controls to collapse</small>
         </div>
     </div>
 
     <script>
         // Global variables
-        let canvas, gl;
+        let canvas, gl, ctx;
         let width, height;
         let animationId;
         let isPaused = false;
+        let useGPU = false;
+        let currentColorMode = 'natural';
+        let simulationScale = 1.0;
         
         // Simulation state
         let agents = [];
         let conductivityField = [];
         let tempField = [];
+        let maskField = [];
+        let firingField = [];
+        let hasMask = false;
+        
+        // GPU resources (placeholder - GPU implementation would require WebGL2 shaders)
+        let gpuSupported = false;
         
         // Performance tracking
         let frameCount = 0;
         let lastTime = 0;
         let fps = 60;
+        
+        // Touch/mouse coordinate mapping
+        let viewTransform = {
+            offsetX: 0,
+            offsetY: 0,
+            scaleX: 1,
+            scaleY: 1
+        };
         
         // Simulation parameters
         let params = {
@@ -372,7 +601,101 @@
             decayRate: 0.980,
             depositStrength: 0.10,
             speed: 1.0,
-            diffusionRate: 0.1
+            diffusionRate: 0.1,
+            neuronFiring: false,
+            firingRate: 0.02
+        };
+        
+        // Color palettes
+        const colorModes = {
+            natural: {
+                physarum: {
+                    color1: [0.05, 0.02, 0.0],
+                    color2: [0.4, 0.8, 0.2],
+                    color3: [0.9, 0.9, 0.4]
+                },
+                plasma: {
+                    color1: [0.0, 0.0, 0.1],
+                    color2: [0.3, 0.1, 0.8],
+                    color3: [0.9, 0.7, 1.0]
+                },
+                neural: {
+                    color1: [0.0, 0.05, 0.1],
+                    color2: [0.0, 0.4, 0.8],
+                    color3: [0.3, 0.8, 1.0]
+                },
+                scientific: {
+                    color1: [0.1, 0.1, 0.1],
+                    color2: [0.8, 0.4, 0.0],
+                    color3: [1.0, 0.8, 0.2]
+                }
+            },
+            scientific: {
+                physarum: {
+                    color1: [0.0, 0.0, 0.2],
+                    color2: [0.0, 0.8, 0.8],
+                    color3: [1.0, 1.0, 0.0]
+                },
+                plasma: {
+                    color1: [0.2, 0.0, 0.0],
+                    color2: [0.8, 0.0, 0.8],
+                    color3: [1.0, 0.5, 0.0]
+                },
+                neural: {
+                    color1: [0.0, 0.0, 0.0],
+                    color2: [0.0, 1.0, 0.0],
+                    color3: [1.0, 0.0, 0.0]
+                },
+                scientific: {
+                    color1: [0.0, 0.0, 0.0],
+                    color2: [0.5, 0.5, 0.5],
+                    color3: [1.0, 1.0, 1.0]
+                }
+            },
+            thermal: {
+                physarum: {
+                    color1: [0.0, 0.0, 0.2],
+                    color2: [0.8, 0.0, 0.0],
+                    color3: [1.0, 1.0, 0.0]
+                },
+                plasma: {
+                    color1: [0.0, 0.0, 0.0],
+                    color2: [0.5, 0.0, 0.5],
+                    color3: [1.0, 0.0, 1.0]
+                },
+                neural: {
+                    color1: [0.0, 0.0, 0.4],
+                    color2: [0.0, 0.5, 1.0],
+                    color3: [1.0, 1.0, 1.0]
+                },
+                scientific: {
+                    color1: [0.0, 0.0, 0.5],
+                    color2: [1.0, 0.5, 0.0],
+                    color3: [1.0, 1.0, 0.5]
+                }
+            },
+            neon: {
+                physarum: {
+                    color1: [0.1, 0.0, 0.1],
+                    color2: [0.0, 1.0, 0.5],
+                    color3: [0.5, 1.0, 1.0]
+                },
+                plasma: {
+                    color1: [0.1, 0.0, 0.2],
+                    color2: [1.0, 0.0, 1.0],
+                    color3: [0.0, 1.0, 1.0]
+                },
+                neural: {
+                    color1: [0.0, 0.1, 0.2],
+                    color2: [0.0, 1.0, 0.0],
+                    color3: [1.0, 1.0, 0.0]
+                },
+                scientific: {
+                    color1: [0.2, 0.0, 0.2],
+                    color2: [1.0, 0.0, 0.0],
+                    color3: [0.0, 0.0, 1.0]
+                }
+            }
         };
         
         // Presets
@@ -383,11 +706,6 @@
                 decayRate: 0.980,
                 depositStrength: 0.10,
                 speed: 1.0,
-                colors: {
-                    color1: [0.1, 0.05, 0.0],
-                    color2: [0.4, 0.8, 0.2],
-                    color3: [0.9, 0.9, 0.4]
-                },
                 diffusionRate: 0.3
             },
             plasma: {
@@ -396,11 +714,6 @@
                 decayRate: 0.950,
                 depositStrength: 0.20,
                 speed: 2.5,
-                colors: {
-                    color1: [0.0, 0.0, 0.1],
-                    color2: [0.3, 0.1, 0.8],
-                    color3: [0.9, 0.7, 1.0]
-                },
                 diffusionRate: 0.1
             },
             neural: {
@@ -409,18 +722,21 @@
                 decayRate: 0.995,
                 depositStrength: 0.05,
                 speed: 0.8,
-                colors: {
-                    color1: [0.0, 0.1, 0.2],
-                    color2: [0.0, 0.6, 0.9],
-                    color3: [0.4, 1.0, 1.0]
-                },
                 diffusionRate: 0.05
+            },
+            scientific: {
+                agentCount: 60000,
+                sensorAngle: 35 * Math.PI / 180,
+                decayRate: 0.985,
+                depositStrength: 0.15,
+                speed: 1.2,
+                diffusionRate: 0.2
             }
         };
         
         let currentPreset = 'physarum';
         
-        // Agent class for better organization
+        // Agent class
         class Agent {
             constructor(x, y, angle) {
                 this.x = x || Math.random() * width;
@@ -449,17 +765,23 @@
                 const rightVal = sampleConductivity(rightX, rightY);
                 const centerVal = sampleConductivity(centerX, centerY);
                 
+                // Check mask collision
+                if (hasMask && !canMoveTo(this.x, this.y)) {
+                    this.angle += (Math.random() - 0.5) * Math.PI;
+                    this.dx = Math.cos(this.angle);
+                    this.dy = Math.sin(this.angle);
+                    return;
+                }
+                
                 // Determine steering direction
                 let steerAngle = 0;
                 if (centerVal > leftVal && centerVal > rightVal) {
-                    // Continue straight
                     steerAngle = 0;
                 } else if (leftVal > rightVal) {
                     steerAngle = -sensorAngle * 0.1;
                 } else if (rightVal > leftVal) {
                     steerAngle = sensorAngle * 0.1;
                 } else {
-                    // Random steering when values are equal
                     steerAngle = (Math.random() - 0.5) * sensorAngle * 0.2;
                 }
                 
@@ -469,15 +791,41 @@
                 this.dy = Math.sin(this.angle);
                 
                 // Move agent
-                this.x += this.dx * params.stepSize * params.speed;
-                this.y += this.dy * params.stepSize * params.speed;
+                const newX = this.x + this.dx * params.stepSize * params.speed;
+                const newY = this.y + this.dy * params.stepSize * params.speed;
                 
-                // Wrap around edges
-                this.x = (this.x + width) % width;
-                this.y = (this.y + height) % height;
+                // Check if new position is valid
+                if (!hasMask || canMoveTo(newX, newY)) {
+                    this.x = (newX + width) % width;
+                    this.y = (newY + height) % height;
+                } else {
+                    // Bounce off walls if mask collision
+                    this.angle += (Math.random() - 0.5) * Math.PI * 0.5;
+                    this.dx = Math.cos(this.angle);
+                    this.dy = Math.sin(this.angle);
+                }
                 
                 // Deposit trail
                 depositAt(Math.floor(this.x), Math.floor(this.y), params.depositStrength);
+                
+                // Neuron firing simulation
+                if (params.neuronFiring && Math.random() < params.firingRate) {
+                    const fireRadius = 5;
+                    for (let dy = -fireRadius; dy <= fireRadius; dy++) {
+                        for (let dx = -fireRadius; dx <= fireRadius; dx++) {
+                            const dist = Math.sqrt(dx*dx + dy*dy);
+                            if (dist <= fireRadius) {
+                                const fx = Math.floor(this.x + dx);
+                                const fy = Math.floor(this.y + dy);
+                                if (fx >= 0 && fx < width && fy >= 0 && fy < height) {
+                                    const index = fy * width + fx;
+                                    const strength = (1 - dist / fireRadius) * 0.3;
+                                    firingField[index] = Math.min(1.0, (firingField[index] || 0) + strength);
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
         
@@ -491,6 +839,18 @@
             return conductivityField[index] || 0;
         }
         
+        function canMoveTo(x, y) {
+            if (!hasMask) return true;
+            
+            const ix = Math.floor(x);
+            const iy = Math.floor(y);
+            
+            if (ix < 0 || ix >= width || iy < 0 || iy >= height) return false;
+            
+            const index = iy * width + ix;
+            return maskField[index] > 0.5; // White pixels are passable
+        }
+        
         function depositAt(x, y, strength) {
             if (x < 0 || x >= width || y < 0 || y >= height) return;
             
@@ -498,10 +858,56 @@
             conductivityField[index] = Math.min(1.0, (conductivityField[index] || 0) + strength);
         }
         
+        function calculateOptimalDimensions() {
+            const dpr = window.devicePixelRatio || 1;
+            const rect = canvas.getBoundingClientRect();
+            
+            // Base resolution on screen size and performance considerations
+            let baseWidth = Math.min(rect.width * dpr, 1200);
+            let baseHeight = Math.min(rect.height * dpr, 800);
+            
+            // Scale down for mobile devices to maintain performance
+            const isMobile = window.innerWidth < 768;
+            if (isMobile) {
+                baseWidth = Math.min(baseWidth, 600);
+                baseHeight = Math.min(baseHeight, 400);
+            }
+            
+            // Maintain aspect ratio
+            const aspectRatio = rect.width / rect.height;
+            if (aspectRatio > 1) {
+                baseHeight = Math.floor(baseWidth / aspectRatio);
+            } else {
+                baseWidth = Math.floor(baseHeight * aspectRatio);
+            }
+            
+            return { width: baseWidth, height: baseHeight };
+        }
+        
+        function updateViewTransform() {
+            const rect = canvas.getBoundingClientRect();
+            viewTransform.scaleX = width / rect.width;
+            viewTransform.scaleY = height / rect.height;
+            viewTransform.offsetX = 0;
+            viewTransform.offsetY = 0;
+        }
+        
+        function screenToSimCoords(screenX, screenY) {
+            const rect = canvas.getBoundingClientRect();
+            const x = (screenX - rect.left) * viewTransform.scaleX;
+            const y = (screenY - rect.top) * viewTransform.scaleY;
+            return { x: Math.max(0, Math.min(width - 1, x)), y: Math.max(0, Math.min(height - 1, y)) };
+        }
+        
         function initializeSimulation() {
-            // Initialize conductivity field
+            const dimensions = calculateOptimalDimensions();
+            width = dimensions.width;
+            height = dimensions.height;
+            
+            // Initialize fields
             conductivityField = new Float32Array(width * height);
             tempField = new Float32Array(width * height);
+            firingField = new Float32Array(width * height);
             
             // Initialize agents
             agents = [];
@@ -516,6 +922,8 @@
                 const y = centerY + Math.sin(angle) * r;
                 agents.push(new Agent(x, y, angle));
             }
+            
+            updateViewTransform();
         }
         
         function updateSimulation() {
@@ -531,8 +939,14 @@
                 conductivityField[i] *= params.decayRate;
             }
             
-            // Simple diffusion (blur)
             applyDiffusion();
+            
+            // Update firing field decay
+            if (params.neuronFiring) {
+                for (let i = 0; i < firingField.length; i++) {
+                    firingField[i] *= 0.95; // Firing decay
+                }
+            }
         }
         
         function applyDiffusion() {
@@ -568,11 +982,16 @@
             const imageData = ctx.createImageData(width, height);
             const data = imageData.data;
             
-            const colors = presets[currentPreset].colors;
+            const colors = colorModes[currentColorMode][currentPreset];
             
             for (let i = 0; i < conductivityField.length; i++) {
                 let intensity = conductivityField[i];
                 intensity = Math.pow(Math.min(1, intensity), 0.5); // Gamma correction
+                
+                // Add firing effect if enabled
+                if (params.neuronFiring && firingField[i] > 0) {
+                    intensity = Math.min(1, intensity + firingField[i] * 0.5);
+                }
                 
                 let r, g, b;
                 
@@ -595,7 +1014,16 @@
                 data[pixelIndex + 3] = 255;     // Alpha
             }
             
-            ctx.putImageData(imageData, 0, 0);
+            // Scale up to canvas size
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = width;
+            tempCanvas.height = height;
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCtx.putImageData(imageData, 0, 0);
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.imageSmoothingEnabled = false;
+            ctx.drawImage(tempCanvas, 0, 0, width, height, 0, 0, canvas.width, canvas.height);
         }
         
         function animate(currentTime) {
@@ -615,27 +1043,13 @@
         }
         
         function resize() {
-            const dpr = window.devicePixelRatio || 1;
             const rect = canvas.getBoundingClientRect();
             
-            // Set canvas size considering device pixel ratio
-            canvas.width = rect.width * dpr;
-            canvas.height = rect.height * dpr;
-            
-            // Scale canvas back down using CSS
+            // Set canvas display size
+            canvas.width = rect.width;
+            canvas.height = rect.height;
             canvas.style.width = rect.width + 'px';
             canvas.style.height = rect.height + 'px';
-            
-            // Update simulation dimensions (keep reasonable resolution for performance)
-            width = Math.min(canvas.width, 800);
-            height = Math.min(canvas.height, 600);
-            
-            // Maintain aspect ratio
-            if (canvas.width > canvas.height) {
-                width = Math.floor(height * (canvas.width / canvas.height));
-            } else {
-                height = Math.floor(width * (canvas.height / canvas.width));
-            }
             
             initializeSimulation();
         }
@@ -650,14 +1064,45 @@
             canvas.style.width = '100vw';
             canvas.style.height = '100vh';
             
+            // Check GPU support
+            checkGPUSupport();
+            
             resize();
             setupEventListeners();
             animate(0);
             
             // Hide info after 5 seconds
             setTimeout(() => {
-                document.getElementById('info').classList.add('hidden');
+                document.getElementById('infoPanel').classList.add('hidden');
             }, 5000);
+        }
+        
+        function checkGPUSupport() {
+            try {
+                const testCanvas = document.createElement('canvas');
+                gl = testCanvas.getContext('webgl2');
+                gpuSupported = !!gl;
+                
+                const gpuIndicator = document.getElementById('gpuIndicator');
+                const gpuStatus = document.getElementById('gpuStatus');
+                
+                if (gpuSupported) {
+                    gpuStatus.textContent = '(Available)';
+                    gpuIndicator.textContent = useGPU ? 'GPU' : 'CPU';
+                    gpuIndicator.className = useGPU ? 'gpu-indicator gpu-on' : 'gpu-indicator gpu-off';
+                } else {
+                    gpuStatus.textContent = '(Not Available)';
+                    document.getElementById('gpuToggle').disabled = true;
+                    useGPU = false;
+                    gpuIndicator.textContent = 'CPU';
+                    gpuIndicator.className = 'gpu-indicator gpu-off';
+                }
+            } catch (e) {
+                gpuSupported = false;
+                useGPU = false;
+                document.getElementById('gpuStatus').textContent = '(Not Available)';
+                document.getElementById('gpuToggle').disabled = true;
+            }
         }
         
         function setupEventListeners() {
@@ -731,6 +1176,27 @@
                 });
             });
             
+            // Color mode buttons
+            document.querySelectorAll('.color-mode-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    setColorMode(btn.dataset.mode);
+                });
+            });
+            
+            // GPU toggle
+            document.getElementById('gpuToggle').addEventListener('change', (e) => {
+                useGPU = e.target.checked && gpuSupported;
+                const gpuIndicator = document.getElementById('gpuIndicator');
+                gpuIndicator.textContent = useGPU ? 'GPU' : 'CPU';
+                gpuIndicator.className = useGPU ? 'gpu-indicator gpu-on' : 'gpu-indicator gpu-off';
+                initializeSimulation();
+            });
+            
+            // Neuron firing toggle
+            document.getElementById('neuronFiring').addEventListener('change', (e) => {
+                params.neuronFiring = e.target.checked;
+            });
+            
             // Slider event listeners
             document.getElementById('agentCount').addEventListener('input', (e) => {
                 params.agentCount = parseInt(e.target.value);
@@ -758,24 +1224,30 @@
                 updateSliderDisplays();
             });
             
+            document.getElementById('firingRate').addEventListener('input', (e) => {
+                params.firingRate = parseFloat(e.target.value);
+                updateSliderDisplays();
+            });
+            
+            // File input for mask loading
+            document.getElementById('maskInput').addEventListener('change', loadMaskFile);
+            
             // Info panel click to hide
-            document.getElementById('info').addEventListener('click', () => {
-                document.getElementById('info').classList.add('hidden');
+            document.getElementById('infoPanel').addEventListener('click', () => {
+                document.getElementById('infoPanel').classList.add('hidden');
             });
         }
         
         function spawnAgentsAt(screenX, screenY) {
-            const rect = canvas.getBoundingClientRect();
-            const x = (screenX - rect.left) / rect.width * width;
-            const y = (screenY - rect.top) / rect.height * height;
+            const coords = screenToSimCoords(screenX, screenY);
             
             // Spawn multiple agents in a small radius
             const spawnCount = Math.min(100, Math.floor(params.agentCount * 0.001));
             for (let i = 0; i < spawnCount; i++) {
                 const angle = Math.random() * Math.PI * 2;
                 const radius = Math.random() * 20;
-                const agentX = x + Math.cos(angle) * radius;
-                const agentY = y + Math.sin(angle) * radius;
+                const agentX = coords.x + Math.cos(angle) * radius;
+                const agentY = coords.y + Math.sin(angle) * radius;
                 
                 // Replace a random existing agent or add new one
                 const index = Math.floor(Math.random() * agents.length);
@@ -785,13 +1257,13 @@
             }
         }
         
-        // UI Functions (now properly defined)
+        // UI Functions
         function toggleControls() {
             const controls = document.getElementById('controls');
             const toggleBtn = document.getElementById('toggleBtn');
             
             controls.classList.toggle('collapsed');
-            toggleBtn.textContent = controls.classList.contains('collapsed') ? '▲' : '▼';
+            toggleBtn.textContent = controls.classList.contains('collapsed') ? '▼' : '▲';
         }
         
         function setPreset(presetName) {
@@ -818,18 +1290,30 @@
             initializeSimulation();
         }
         
+        function setColorMode(modeName) {
+            currentColorMode = modeName;
+            
+            // Update active button
+            document.querySelectorAll('.color-mode-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.querySelector(`[data-mode="${modeName}"]`).classList.add('active');
+        }
+        
         function updateSliderDisplays() {
             document.getElementById('agentCountValue').textContent = params.agentCount.toLocaleString();
             document.getElementById('sensorAngleValue').textContent = (params.sensorAngle * 180 / Math.PI).toFixed(1) + '°';
             document.getElementById('decayRateValue').textContent = params.decayRate.toFixed(3);
             document.getElementById('depositStrengthValue').textContent = params.depositStrength.toFixed(2);
             document.getElementById('speedValue').textContent = params.speed.toFixed(1);
+            document.getElementById('firingRateValue').textContent = params.firingRate.toFixed(3);
         }
         
         function resetSimulation() {
-            // Clear conductivity field
+            // Clear fields
             conductivityField.fill(0);
             tempField.fill(0);
+            firingField.fill(0);
             
             // Reinitialize agents
             initializeSimulation();
@@ -847,6 +1331,128 @@
                 btn.style.background = 'rgba(255, 200, 100, 0.3)';
                 btn.style.borderColor = 'rgba(255, 200, 100, 0.5)';
             }
+        }
+        
+        // Maze generation function
+        function generateMaze() {
+            const cellSize = 8;
+            const mazeWidth = Math.floor(width / cellSize);
+            const mazeHeight = Math.floor(height / cellSize);
+            
+            // Initialize maze grid (0 = wall, 1 = path)
+            const maze = Array(mazeHeight).fill().map(() => Array(mazeWidth).fill(0));
+            
+            // Simple maze generation using recursive backtracking
+            const stack = [];
+            const visited = Array(mazeHeight).fill().map(() => Array(mazeWidth).fill(false));
+            
+            function getNeighbors(x, y) {
+                const neighbors = [];
+                const directions = [[0, -2], [2, 0], [0, 2], [-2, 0]];
+                
+                for (const [dx, dy] of directions) {
+                    const nx = x + dx;
+                    const ny = y + dy;
+                    if (nx >= 0 && nx < mazeWidth && ny >= 0 && ny < mazeHeight && !visited[ny][nx]) {
+                        neighbors.push([nx, ny]);
+                    }
+                }
+                return neighbors;
+            }
+            
+            // Start from random position
+            let currentX = Math.floor(Math.random() * (mazeWidth / 2)) * 2;
+            let currentY = Math.floor(Math.random() * (mazeHeight / 2)) * 2;
+            
+            visited[currentY][currentX] = true;
+            maze[currentY][currentX] = 1;
+            stack.push([currentX, currentY]);
+            
+            while (stack.length > 0) {
+                const neighbors = getNeighbors(currentX, currentY);
+                
+                if (neighbors.length > 0) {
+                    const [nextX, nextY] = neighbors[Math.floor(Math.random() * neighbors.length)];
+                    
+                    // Remove wall between current and next cell
+                    const wallX = currentX + (nextX - currentX) / 2;
+                    const wallY = currentY + (nextY - currentY) / 2;
+                    maze[wallY][wallX] = 1;
+                    maze[nextY][nextX] = 1;
+                    
+                    visited[nextY][nextX] = true;
+                    stack.push([nextX, nextY]);
+                    currentX = nextX;
+                    currentY = nextY;
+                } else {
+                    const [prevX, prevY] = stack.pop();
+                    currentX = prevX;
+                    currentY = prevY;
+                }
+            }
+            
+            // Convert maze to mask field
+            maskField = new Float32Array(width * height);
+            for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    const mazeX = Math.floor(x / cellSize);
+                    const mazeY = Math.floor(y / cellSize);
+                    const index = y * width + x;
+                    maskField[index] = maze[mazeY] && maze[mazeY][mazeX] ? 1.0 : 0.0;
+                }
+            }
+            
+            hasMask = true;
+            initializeSimulation();
+        }
+        
+        function clearMask() {
+            hasMask = false;
+            maskField = [];
+            initializeSimulation();
+        }
+        
+        function invertMask() {
+            if (!hasMask) return;
+            
+            for (let i = 0; i < maskField.length; i++) {
+                maskField[i] = 1.0 - maskField[i];
+            }
+            initializeSimulation();
+        }
+        
+        function loadMaskFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = function() {
+                    // Create temporary canvas to process image
+                    const tempCanvas = document.createElement('canvas');
+                    tempCanvas.width = width;
+                    tempCanvas.height = height;
+                    const tempCtx = tempCanvas.getContext('2d');
+                    
+                    // Draw and scale image
+                    tempCtx.drawImage(img, 0, 0, width, height);
+                    const imageData = tempCtx.getImageData(0, 0, width, height);
+                    const data = imageData.data;
+                    
+                    // Convert to grayscale mask
+                    maskField = new Float32Array(width * height);
+                    for (let i = 0; i < data.length; i += 4) {
+                        const grayscale = (data[i] + data[i + 1] + data[i + 2]) / 3;
+                        maskField[i / 4] = grayscale / 255.0;
+                    }
+                    
+                    hasMask = true;
+                    initializeSimulation();
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
         }
         
         // Initialize the application when DOM is loaded
