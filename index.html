@@ -483,12 +483,10 @@ function setupEventListeners() {
             window.addEventListener('resize', resize);
             let isDrawing = false;
             let activeTouches = new Map();
+            let lastTouchEnd = 0; // For preventing double-tap zoom
 
-            // --- A helper function to check if an event started on a UI element ---
-            // This is the gatekeeper for our logic.
+            // Helper function to check if an event started on a UI element
             function isEventOnUI(event) {
-                // .closest() travels up the DOM tree from the event target 
-                // to see if it is inside one of our UI containers.
                 return event.target.closest && 
                        (event.target.closest('.controls') || 
                         event.target.closest('#fpsCounter') || 
@@ -496,7 +494,6 @@ function setupEventListeners() {
             }
 
             // --- MOUSE EVENTS ---
-            // We can keep these simple as they don't affect mobile scrolling.
             canvas.addEventListener('mousedown', (e) => { 
                 if (isEventOnUI(e)) return;
                 e.preventDefault(); 
@@ -514,20 +511,18 @@ function setupEventListeners() {
             });
             
             // --- TOUCH EVENTS ---
-            // We listen on the whole document to correctly capture the initial event target.
             document.addEventListener('touchstart', (e) => {
-                // 1. Check if the touch originated on a UI element.
-                if (isEventOnUI(e)) {
-                    // 2. If it's a UI touch, STOP immediately. Do not set any flags, 
-                    // do not prevent default. This allows the browser to perform
-                    // its native scrolling action without interference.
-                    return; 
+                // If the touch originated on the UI, do nothing. Let the browser scroll.
+                if (isEventOnUI(e)) return; 
+
+                // If it's a multi-touch gesture (like pinch-to-zoom), prevent it.
+                if (e.touches.length > 1) {
+                    e.preventDefault();
+                    return;
                 }
 
-                // 3. If we are here, the touch was on the canvas. NOW we can safely
-                // prevent the default browser action (like scrolling the whole page).
+                // If we are here, it's a single touch on the canvas. Prevent default and start drawing.
                 e.preventDefault();
-
                 for (let touch of e.changedTouches) {
                     activeTouches.set(touch.identifier, {x: touch.clientX, y: touch.clientY, startX: touch.clientX, startY: touch.clientY});
                 }
@@ -536,15 +531,13 @@ function setupEventListeners() {
                    const touch = Array.from(activeTouches.values())[0];
                    startDrawing(touch.x, touch.y);
                 }
-            }, { passive: false }); // We must explicitly state we might call preventDefault().
+            }, { passive: false });
 
             document.addEventListener('touchmove', (e) => {
-                // We only care about touchmove if a canvas draw has been initiated.
-                // This prevents accidental actions and ensures we don't interfere
-                // with a scroll that might have started on the UI and slid off.
+                // If a canvas draw was never initiated, do nothing. This protects UI scrolling.
                 if (!isDrawing) return;
                 
-                // This is a canvas gesture, so we must prevent default.
+                // Prevent default for all canvas-based touch moves.
                 e.preventDefault();
 
                 for (let touch of e.changedTouches) {
@@ -575,8 +568,16 @@ function setupEventListeners() {
             }, { passive: false });
 
             document.addEventListener('touchend', (e) => {
+                // --- Double-tap zoom prevention logic, now UI-aware ---
+                if (!isEventOnUI(e)) {
+                    const now = (new Date()).getTime();
+                    if (now - lastTouchEnd <= 300) {
+                        e.preventDefault();
+                    }
+                    lastTouchEnd = now;
+                }
+
                 for(let touch of e.changedTouches){ activeTouches.delete(touch.identifier); }
-                // Reset the drawing flag only when the last finger is lifted.
                 if (activeTouches.size < 1) {
                     isDrawing = false;
                 }
@@ -829,10 +830,7 @@ function setupEventListeners() {
 
         if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', init); } else { init(); }
 
-        let lastTouchEnd = 0;
-        document.addEventListener('touchend', function (event) { const now = (new Date()).getTime(); if (now - lastTouchEnd <= 300) { event.preventDefault(); } lastTouchEnd = now; }, false);
-        document.addEventListener('touchstart', function(e) { if (e.touches.length > 1) e.preventDefault(); }, { passive: false });
-        document.addEventListener('touchmove', function(e) { if (e.scale !== 1) e.preventDefault(); }, { passive: false });
+
     </script>
 </body>
 </html>
