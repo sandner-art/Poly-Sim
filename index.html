@@ -50,6 +50,7 @@
             pointer-events: auto;
             max-height: 70vh;
             overflow-y: auto;
+            touch-action: auto; /* Added this line to re-enable scrolling on the panel */
         }
         
         .controls.collapsed {
@@ -112,6 +113,27 @@
             font-size: 16px;
             transition: all 0.3s ease;
         }
+
+.header-buttons {
+            display: flex;
+            align-items: center;
+            gap: 10px; /* Adds space between the fullscreen and collapse buttons */
+            /* Prevents the main header's click event from firing when a button is clicked */
+            pointer-events: auto; 
+            z-index: 1;
+        }
+        
+        /* Stop the buttons from also triggering the collapse action */
+        .header-buttons .toggle-btn {
+            pointer-events: auto;
+        }
+
+        .toggle-btn svg {
+            width: 18px;
+            height: 18px;
+            fill: white;
+            display: block;
+        }        
         
         .toggle-btn:hover {
             background: rgba(255, 255, 255, 0.2);
@@ -448,12 +470,17 @@
     
     <div class="ui-overlay">
         <div class="controls" id="controls">
-            <div class="controls-header" onclick="toggleControls()">
+        <div class="controls-header" id="controlsHeader">
                 <h3>
                     Poly-Sim 
                     <span class="gpu-indicator" id="gpuIndicator">CPU</span>
                 </h3>
-                <div class="toggle-btn" id="toggleBtn">▲</div>
+                <div class="header-buttons">
+                    <div class="toggle-btn" id="fullscreenBtn">
+                        <!-- Fullscreen icon will be inserted here by JavaScript -->
+                    </div>
+                    <div class="toggle-btn" id="toggleBtn">▲</div>
+                </div>
             </div>
             
             <div class="controls-content">
@@ -1168,7 +1195,14 @@
             setupControlListeners();
         }
         
-        function setupControlListeners() {
+function setupControlListeners() {
+            // Controls header click handler (moved from HTML)
+            document.getElementById('controlsHeader').addEventListener('click', (e) => {
+                // Only toggle if the click is on the header itself, not the buttons
+                if (e.target.id === 'controlsHeader' || e.target.closest('h3')) {
+                    toggleControls();
+                }
+            });
             // Preset buttons
             document.querySelectorAll('.preset-btn').forEach(btn => {
                 btn.addEventListener('click', () => {
@@ -1236,6 +1270,16 @@
             document.getElementById('infoPanel').addEventListener('click', () => {
                 document.getElementById('infoPanel').classList.add('hidden');
             });
+
+            // Fullscreen button
+            document.getElementById('fullscreenBtn').addEventListener('click', toggleFullscreen);
+            
+            // Listen for fullscreen changes (e.g., user pressing ESC)
+            document.addEventListener('fullscreenchange', updateFullscreenIcon);
+            document.addEventListener('webkitfullscreenchange', updateFullscreenIcon); // For Safari
+            
+            // Set the initial icon state
+            updateFullscreenIcon();            
         }
         
         function spawnAgentsAt(screenX, screenY) {
@@ -1484,6 +1528,41 @@
                 e.preventDefault();
             }
         }, { passive: false });
+
+
+function toggleFullscreen() {
+            // This function handles entering and exiting fullscreen mode
+            if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+                if (document.documentElement.requestFullscreen) {
+                    document.documentElement.requestFullscreen();
+                } else if (document.documentElement.webkitRequestFullscreen) { /* Safari */
+                    document.documentElement.webkitRequestFullscreen();
+                }
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                } else if (document.webkitExitFullscreen) { /* Safari */
+                    document.webkitExitFullscreen();
+                }
+            }
+        }
+
+        function updateFullscreenIcon() {
+            // This function changes the icon based on the current fullscreen state
+            const fullscreenBtn = document.getElementById('fullscreenBtn');
+            if (!fullscreenBtn) return;
+            
+            const isFullscreen = !!(document.fullscreenElement || document.webkitFullscreenElement);
+            
+            if (isFullscreen) {
+                fullscreenBtn.innerHTML = `<svg viewBox="0 0 24 24"><path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z"/></svg>`;
+                fullscreenBtn.title = "Exit Fullscreen";
+            } else {
+                fullscreenBtn.innerHTML = `<svg viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>`;
+                fullscreenBtn.title = "Enter Fullscreen";
+            }
+        }        
+
     </script>
 </body>
 </html>
