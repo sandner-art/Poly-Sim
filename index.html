@@ -484,8 +484,11 @@ function setupEventListeners() {
             let isDrawing = false;
             let activeTouches = new Map();
 
-            // This function checks if an event target is part of the UI
+            // --- A helper function to check if an event started on a UI element ---
+            // This is the gatekeeper for our logic.
             function isEventOnUI(event) {
+                // .closest() travels up the DOM tree from the event target 
+                // to see if it is inside one of our UI containers.
                 return event.target.closest && 
                        (event.target.closest('.controls') || 
                         event.target.closest('#fpsCounter') || 
@@ -493,7 +496,7 @@ function setupEventListeners() {
             }
 
             // --- MOUSE EVENTS ---
-            // We only prevent default on the canvas itself
+            // We can keep these simple as they don't affect mobile scrolling.
             canvas.addEventListener('mousedown', (e) => { 
                 if (isEventOnUI(e)) return;
                 e.preventDefault(); 
@@ -501,10 +504,7 @@ function setupEventListeners() {
                 startDrawing(e.clientX, e.clientY); 
             });
             document.addEventListener('mousemove', (e) => { 
-                if (isDrawing) {
-                    // No need to check for UI here, isDrawing is our gatekeeper
-                    spawnAgentsAt(e.clientX, e.clientY);
-                }
+                if (isDrawing) spawnAgentsAt(e.clientX, e.clientY);
             });
             document.addEventListener('mouseup', () => { 
                 isDrawing = false; 
@@ -514,16 +514,18 @@ function setupEventListeners() {
             });
             
             // --- TOUCH EVENTS ---
-            // Listen on the entire document to correctly handle the event flow
+            // We listen on the whole document to correctly capture the initial event target.
             document.addEventListener('touchstart', (e) => {
-                // If the touch is on the UI, do absolutely nothing.
-                // Let the browser handle its native scrolling.
+                // 1. Check if the touch originated on a UI element.
                 if (isEventOnUI(e)) {
+                    // 2. If it's a UI touch, STOP immediately. Do not set any flags, 
+                    // do not prevent default. This allows the browser to perform
+                    // its native scrolling action without interference.
                     return; 
                 }
 
-                // If we are here, it's a canvas touch.
-                // Now we can safely prevent default behavior.
+                // 3. If we are here, the touch was on the canvas. NOW we can safely
+                // prevent the default browser action (like scrolling the whole page).
                 e.preventDefault();
 
                 for (let touch of e.changedTouches) {
@@ -534,13 +536,15 @@ function setupEventListeners() {
                    const touch = Array.from(activeTouches.values())[0];
                    startDrawing(touch.x, touch.y);
                 }
-            }, { passive: false });
+            }, { passive: false }); // We must explicitly state we might call preventDefault().
 
             document.addEventListener('touchmove', (e) => {
-                // We only act if a canvas draw has been initiated
+                // We only care about touchmove if a canvas draw has been initiated.
+                // This prevents accidental actions and ensures we don't interfere
+                // with a scroll that might have started on the UI and slid off.
                 if (!isDrawing) return;
                 
-                // This is a canvas touch, so we must prevent default
+                // This is a canvas gesture, so we must prevent default.
                 e.preventDefault();
 
                 for (let touch of e.changedTouches) {
@@ -551,8 +555,7 @@ function setupEventListeners() {
                 }
                 
                 if (isDrawing && activeTouches.size === 1 && brushMode === 'spawn') {
-                    const touch = Array.from(activeTouches.values())[0];
-                    spawnAgentsAt(touch.x, touch.y);
+                    spawnAgentsAt(Array.from(activeTouches.values())[0].x, Array.from(activeTouches.values())[0].y);
                 } 
                 else if (activeTouches.size === 2) {
                     // (Vortex logic is preserved here)
@@ -573,6 +576,7 @@ function setupEventListeners() {
 
             document.addEventListener('touchend', (e) => {
                 for(let touch of e.changedTouches){ activeTouches.delete(touch.identifier); }
+                // Reset the drawing flag only when the last finger is lifted.
                 if (activeTouches.size < 1) {
                     isDrawing = false;
                 }
