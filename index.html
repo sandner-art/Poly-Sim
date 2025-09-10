@@ -1169,28 +1169,47 @@
             canvas.addEventListener('mouseleave', stopDrawing);
             
             // Touch events
+// --- REPLACEMENT FOR TOUCH EVENTS ---
+
+            // A flag to track if the current touch started on the UI
+            let isUITouch = false;
+
             canvas.addEventListener('touchstart', (e) => {
-                e.preventDefault();
                 const touch = e.touches[0];
-                startDrawing(touch.clientX, touch.clientY);
-            });
-            
-            canvas.addEventListener('touchmove', (e) => {
-                // Check if the touch event's target is the controls panel or any element inside it.
-                if (e.target.closest && e.target.closest('#controls')) {
-                    // If the touch is on the controls, do nothing.
-                    // This allows the browser's default scrolling behavior to take over.
+                // Check if the touch's target is any of our UI elements
+                if (touch.target.closest && (touch.target.closest('#controls') || touch.target.closest('#fpsCounter') || touch.target.closest('#infoPanel'))) {
+                    // If so, flag it as a UI touch and do nothing else.
+                    // This allows the browser to handle scrolling.
+                    isUITouch = true;
                     return;
                 }
+                
+                // If it's not a UI touch, it's for the canvas.
+                isUITouch = false;
+                e.preventDefault();
+                startDrawing(touch.clientX, touch.clientY);
+            });
 
-                // If the touch is not on the controls, prevent the default page scroll
-                // and continue with the drawing logic for the canvas.
+            canvas.addEventListener('touchmove', (e) => {
+                // If the touch started on the UI, ignore it completely.
+                if (isUITouch) {
+                    return;
+                }
+                
+                // Otherwise, prevent default and draw on the canvas.
                 e.preventDefault();
                 const touch = e.touches[0];
                 continueDrawing(touch.clientX, touch.clientY);
             }, { passive: false });
-            
+
             canvas.addEventListener('touchend', (e) => {
+                // If this was a UI touch, just reset the flag and we're done.
+                if (isUITouch) {
+                    isUITouch = false;
+                    return;
+                }
+                
+                // Otherwise, it was a canvas touch, so stop drawing.
                 e.preventDefault();
                 stopDrawing();
             });
