@@ -101,4 +101,6 @@ Try it out by touching and dragging to see how the agents create beautiful, effi
 
 ## License
 
-Poly-Sim is research and educational tool, with [MIT License](LICENSE).
+Poly-Sim is a research and educational tool. The source code is licensed under the [MIT License](LICENSE), allowing broad reuse and modification.
+
+Scientific papers, documentation, and other textual materials in this repository are licensed under the [Creative Commons Attribution-ShareAlike 4.0 International (CC BY-SA 4.0)](https://creativecommons.org/licenses/by-sa/4.0/), promoting open research and collaborative development.
