@@ -1176,10 +1176,19 @@
             });
             
             canvas.addEventListener('touchmove', (e) => {
+                // Check if the touch event's target is the controls panel or any element inside it.
+                if (e.target.closest && e.target.closest('#controls')) {
+                    // If the touch is on the controls, do nothing.
+                    // This allows the browser's default scrolling behavior to take over.
+                    return;
+                }
+
+                // If the touch is not on the controls, prevent the default page scroll
+                // and continue with the drawing logic for the canvas.
                 e.preventDefault();
                 const touch = e.touches[0];
                 continueDrawing(touch.clientX, touch.clientY);
-            });
+            }, { passive: false });
             
             canvas.addEventListener('touchend', (e) => {
                 e.preventDefault();
