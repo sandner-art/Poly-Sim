@@ -479,10 +479,11 @@
             initializeSimulation();
         }
 
-        function setupEventListeners() {
+function setupEventListeners() {
             window.addEventListener('resize', resize);
             let isDrawing = false;
             let activeTouches = new Map();
+            let isUITouch = false; // Manages state for UI vs. canvas touches
 
             // Mouse Events
             canvas.addEventListener('mousedown', (e) => { e.preventDefault(); isDrawing = true; startDrawing(e.clientX, e.clientY); });
@@ -492,11 +493,17 @@
             
             // Touch Events
             canvas.addEventListener('touchstart', (e) => {
-                let isUITouch = e.target.closest && (e.target.closest('.controls') || e.target.closest('#fpsCounter') || e.target.closest('#graphToggleBtn'));
-                if (isUITouch) return;
+                // Check if the touch started on a UI element
+                if (e.target.closest && (e.target.closest('.controls') || e.target.closest('#fpsCounter') || e.target.closest('#graphToggleBtn'))) {
+                    isUITouch = true;
+                    return; // Allow native scrolling
+                }
+                isUITouch = false; // It's a canvas touch
+                
                 e.preventDefault();
                 for (let touch of e.changedTouches) {
-                    activeTouches.set(touch.identifier, {x: touch.clientX, y: touch.clientY});
+                    // Store the starting position for vortex gestures
+                    activeTouches.set(touch.identifier, {x: touch.clientX, y: touch.clientY, startX: touch.clientX, startY: touch.clientY});
                 }
                 if (activeTouches.size === 1) {
                    isDrawing = true;
@@ -506,21 +513,25 @@
             }, { passive: false });
 
             canvas.addEventListener('touchmove', (e) => {
-                let isUITouch = e.target.closest && (e.target.closest('.controls') || e.target.closest('#fpsCounter') || e.target.closest('#graphToggleBtn'));
+                // Rely on the state set by touchstart
                 if (isUITouch) return;
-                e.preventDefault();
-
+                
+                e.preventDefault(); // Prevent default only for canvas interactions
+                
                 for (let touch of e.changedTouches) {
                     if (activeTouches.has(touch.identifier)) {
-                         const oldTouch = activeTouches.get(touch.identifier);
-                         activeTouches.set(touch.identifier, {...oldTouch, x: touch.clientX, y: touch.clientY});
+                        const oldTouch = activeTouches.get(touch.identifier);
+                        activeTouches.set(touch.identifier, {...oldTouch, x: touch.clientX, y: touch.clientY});
                     }
                 }
-
-                if (activeTouches.size === 1 && isDrawing && brushMode === 'spawn') {
+                
+                // --- SINGLE-FINGER DRAWING ---
+                if (isDrawing && activeTouches.size === 1 && brushMode === 'spawn') {
                     const touch = Array.from(activeTouches.values())[0];
                     spawnAgentsAt(touch.x, touch.y);
-                } else if (activeTouches.size === 2) {
+                } 
+                // --- TWO-FINGER VORTEX GESTURE ---
+                else if (activeTouches.size === 2) {
                     const touches = Array.from(activeTouches.values());
                     const t1 = touches[0];
                     const t2 = touches[1];
@@ -543,7 +554,10 @@
 
             canvas.addEventListener('touchend', (e) => {
                 for(let touch of e.changedTouches){ activeTouches.delete(touch.identifier); }
-                if (activeTouches.size < 1) isDrawing = false;
+                if (activeTouches.size < 1) {
+                    isDrawing = false;
+                    isUITouch = false; // Reset the state on final touch end
+                }
             });
 
             setupControlListeners();
