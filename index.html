@@ -483,26 +483,50 @@ function setupEventListeners() {
             window.addEventListener('resize', resize);
             let isDrawing = false;
             let activeTouches = new Map();
-            let isUITouch = false; // Manages state for UI vs. canvas touches
 
-            // Mouse Events
-            canvas.addEventListener('mousedown', (e) => { e.preventDefault(); isDrawing = true; startDrawing(e.clientX, e.clientY); });
-            canvas.addEventListener('mousemove', (e) => { if (isDrawing && brushMode === 'spawn') spawnAgentsAt(e.clientX, e.clientY); });
-            canvas.addEventListener('mouseup', () => isDrawing = false);
-            canvas.addEventListener('mouseleave', () => isDrawing = false);
-            
-            // Touch Events
-            canvas.addEventListener('touchstart', (e) => {
-                // Check if the touch started on a UI element
-                if (e.target.closest && (e.target.closest('.controls') || e.target.closest('#fpsCounter') || e.target.closest('#graphToggleBtn'))) {
-                    isUITouch = true;
-                    return; // Allow native scrolling
+            // This function checks if an event target is part of the UI
+            function isEventOnUI(event) {
+                return event.target.closest && 
+                       (event.target.closest('.controls') || 
+                        event.target.closest('#fpsCounter') || 
+                        event.target.closest('#graphToggleBtn'));
+            }
+
+            // --- MOUSE EVENTS ---
+            // We only prevent default on the canvas itself
+            canvas.addEventListener('mousedown', (e) => { 
+                if (isEventOnUI(e)) return;
+                e.preventDefault(); 
+                isDrawing = true; 
+                startDrawing(e.clientX, e.clientY); 
+            });
+            document.addEventListener('mousemove', (e) => { 
+                if (isDrawing) {
+                    // No need to check for UI here, isDrawing is our gatekeeper
+                    spawnAgentsAt(e.clientX, e.clientY);
                 }
-                isUITouch = false; // It's a canvas touch
-                
+            });
+            document.addEventListener('mouseup', () => { 
+                isDrawing = false; 
+            });
+            document.addEventListener('mouseleave', () => {
+                isDrawing = false;
+            });
+            
+            // --- TOUCH EVENTS ---
+            // Listen on the entire document to correctly handle the event flow
+            document.addEventListener('touchstart', (e) => {
+                // If the touch is on the UI, do absolutely nothing.
+                // Let the browser handle its native scrolling.
+                if (isEventOnUI(e)) {
+                    return; 
+                }
+
+                // If we are here, it's a canvas touch.
+                // Now we can safely prevent default behavior.
                 e.preventDefault();
+
                 for (let touch of e.changedTouches) {
-                    // Store the starting position for vortex gestures
                     activeTouches.set(touch.identifier, {x: touch.clientX, y: touch.clientY, startX: touch.clientX, startY: touch.clientY});
                 }
                 if (activeTouches.size === 1) {
@@ -512,12 +536,13 @@ function setupEventListeners() {
                 }
             }, { passive: false });
 
-            canvas.addEventListener('touchmove', (e) => {
-                // Rely on the state set by touchstart
-                if (isUITouch) return;
+            document.addEventListener('touchmove', (e) => {
+                // We only act if a canvas draw has been initiated
+                if (!isDrawing) return;
                 
-                e.preventDefault(); // Prevent default only for canvas interactions
-                
+                // This is a canvas touch, so we must prevent default
+                e.preventDefault();
+
                 for (let touch of e.changedTouches) {
                     if (activeTouches.has(touch.identifier)) {
                         const oldTouch = activeTouches.get(touch.identifier);
@@ -525,26 +550,20 @@ function setupEventListeners() {
                     }
                 }
                 
-                // --- SINGLE-FINGER DRAWING ---
                 if (isDrawing && activeTouches.size === 1 && brushMode === 'spawn') {
                     const touch = Array.from(activeTouches.values())[0];
                     spawnAgentsAt(touch.x, touch.y);
                 } 
-                // --- TWO-FINGER VORTEX GESTURE ---
                 else if (activeTouches.size === 2) {
+                    // (Vortex logic is preserved here)
                     const touches = Array.from(activeTouches.values());
-                    const t1 = touches[0];
-                    const t2 = touches[1];
+                    const t1 = touches[0]; const t2 = touches[1];
                     const angle = Math.atan2(t2.y - t1.y, t2.x - t1.x);
                     const startAngle = Math.atan2(t2.startY - t1.startY, t2.startX - t1.startX);
                     const angleDiff = angle - startAngle;
-                    
-                    if (Math.abs(angleDiff) > 0.1) { // Threshold to detect rotation
-                        const centerX = (t1.x + t2.x) / 2;
-                        const centerY = (t1.y + t2.y) / 2;
+                    if (Math.abs(angleDiff) > 0.1) {
+                        const centerX = (t1.x + t2.x) / 2; const centerY = (t1.y + t2.y) / 2;
                         applyVortex(centerX, centerY, angleDiff * 5.0, 100);
-                        
-                        // Update start angle to prevent cumulative rotation
                         const keys = Array.from(activeTouches.keys());
                         activeTouches.set(keys[0], {...t1, startX: t1.x, startY: t1.y});
                         activeTouches.set(keys[1], {...t2, startX: t2.x, startY: t2.y});
@@ -552,11 +571,10 @@ function setupEventListeners() {
                 }
             }, { passive: false });
 
-            canvas.addEventListener('touchend', (e) => {
+            document.addEventListener('touchend', (e) => {
                 for(let touch of e.changedTouches){ activeTouches.delete(touch.identifier); }
                 if (activeTouches.size < 1) {
                     isDrawing = false;
-                    isUITouch = false; // Reset the state on final touch end
                 }
             });
 
