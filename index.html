@@ -483,63 +483,53 @@ function setupEventListeners() {
             window.addEventListener('resize', resize);
             let isDrawing = false;
             let activeTouches = new Map();
-            let lastTouchEnd = 0; // For preventing double-tap zoom
+            let lastTouchEnd = 0;
 
-            // Helper function to check if an event started on a UI element
             function isEventOnUI(event) {
-                return event.target.closest && 
-                       (event.target.closest('.controls') || 
-                        event.target.closest('#fpsCounter') || 
-                        event.target.closest('#graphToggleBtn'));
+                return event.target.closest && (event.target.closest('.controls') || event.target.closest('#fpsCounter') || event.target.closest('#graphToggleBtn'));
             }
 
-            // --- MOUSE EVENTS ---
-            canvas.addEventListener('mousedown', (e) => { 
-                if (isEventOnUI(e)) return;
-                e.preventDefault(); 
-                isDrawing = true; 
-                startDrawing(e.clientX, e.clientY); 
-            });
-            document.addEventListener('mousemove', (e) => { 
-                if (isDrawing) spawnAgentsAt(e.clientX, e.clientY);
-            });
-            document.addEventListener('mouseup', () => { 
-                isDrawing = false; 
-            });
-            document.addEventListener('mouseleave', () => {
-                isDrawing = false;
-            });
+            // Mouse Events (unchanged)
+            canvas.addEventListener('mousedown', (e) => { if (isEventOnUI(e)) return; e.preventDefault(); isDrawing = true; startDrawing(e.clientX, e.clientY); });
+            document.addEventListener('mousemove', (e) => { if (isDrawing) spawnAgentsAt(e.clientX, e.clientY); });
+            document.addEventListener('mouseup', () => { isDrawing = false; });
+            document.addEventListener('mouseleave', () => { isDrawing = false; });
             
             // --- TOUCH EVENTS ---
             document.addEventListener('touchstart', (e) => {
-                // If the touch originated on the UI, do nothing. Let the browser scroll.
-                if (isEventOnUI(e)) return; 
+                if (isEventOnUI(e)) return;
 
-                // If it's a multi-touch gesture (like pinch-to-zoom), prevent it.
-                if (e.touches.length > 1) {
-                    e.preventDefault();
-                    return;
-                }
-
-                // If we are here, it's a single touch on the canvas. Prevent default and start drawing.
+                // Prevent default for all canvas touches
                 e.preventDefault();
+
+                // Update active touches
                 for (let touch of e.changedTouches) {
-                    activeTouches.set(touch.identifier, {x: touch.clientX, y: touch.clientY, startX: touch.clientX, startY: touch.clientY});
+                    activeTouches.set(touch.identifier, {x: touch.clientX, y: touch.clientY});
                 }
-                if (activeTouches.size === 1) {
-                   isDrawing = true;
-                   const touch = Array.from(activeTouches.values())[0];
-                   startDrawing(touch.x, touch.y);
+
+                // --- VORTEX GESTURE INITIALIZATION ---
+                if (activeTouches.size === 2) {
+                    isDrawing = false; // Stop single-finger drawing
+                    const touches = Array.from(activeTouches.values());
+                    // Calculate the initial angle and store it as lastAngle
+                    const initialAngle = Math.atan2(touches[1].y - touches[0].y, touches[1].x - touches[0].x);
+                    for (let touch of activeTouches.values()) {
+                        touch.lastAngle = initialAngle;
+                    }
+                } else if (activeTouches.size === 1) {
+                    isDrawing = true;
+                    startDrawing(Array.from(activeTouches.values())[0].x, Array.from(activeTouches.values())[0].y);
                 }
+
             }, { passive: false });
 
             document.addEventListener('touchmove', (e) => {
-                // If a canvas draw was never initiated, do nothing. This protects UI scrolling.
-                if (!isDrawing) return;
+                // Do nothing if touch is on UI OR if no canvas gesture is active
+                if (isEventOnUI(e) || activeTouches.size === 0) return;
                 
-                // Prevent default for all canvas-based touch moves.
                 e.preventDefault();
 
+                // Update touch positions
                 for (let touch of e.changedTouches) {
                     if (activeTouches.has(touch.identifier)) {
                         const oldTouch = activeTouches.get(touch.identifier);
@@ -550,35 +540,51 @@ function setupEventListeners() {
                 if (isDrawing && activeTouches.size === 1 && brushMode === 'spawn') {
                     spawnAgentsAt(Array.from(activeTouches.values())[0].x, Array.from(activeTouches.values())[0].y);
                 } 
+                // --- CORRECT VORTEX LOGIC ---
                 else if (activeTouches.size === 2) {
-                    // (Vortex logic is preserved here)
                     const touches = Array.from(activeTouches.values());
-                    const t1 = touches[0]; const t2 = touches[1];
-                    const angle = Math.atan2(t2.y - t1.y, t2.x - t1.x);
-                    const startAngle = Math.atan2(t2.startY - t1.startY, t2.startX - t1.startX);
-                    const angleDiff = angle - startAngle;
-                    if (Math.abs(angleDiff) > 0.1) {
-                        const centerX = (t1.x + t2.x) / 2; const centerY = (t1.y + t2.y) / 2;
+                    const t1 = touches[0];
+                    const t2 = touches[1];
+
+                    // 1. Get the angle from the previous frame (it's the same for both touches)
+                    const lastAngle = t1.lastAngle;
+
+                    // 2. Calculate the current angle
+                    const currentAngle = Math.atan2(t2.y - t1.y, t2.x - t1.x);
+
+                    // 3. Find the difference from the last frame
+                    const angleDiff = currentAngle - lastAngle;
+
+                    // 4. If there was a change, apply the vortex
+                    if (Math.abs(angleDiff) > 0.01) { // Small threshold for stability
+                        const centerX = (t1.x + t2.x) / 2;
+                        const centerY = (t1.y + t2.y) / 2;
+                        // Strength is proportional to the rotational speed
                         applyVortex(centerX, centerY, angleDiff * 5.0, 100);
-                        const keys = Array.from(activeTouches.keys());
-                        activeTouches.set(keys[0], {...t1, startX: t1.x, startY: t1.y});
-                        activeTouches.set(keys[1], {...t2, startX: t2.x, startY: t2.y});
+                    }
+
+                    // 5. CRITICAL: Update lastAngle for the next frame
+                    for (let touch of activeTouches.values()) {
+                        touch.lastAngle = currentAngle;
                     }
                 }
             }, { passive: false });
 
             document.addEventListener('touchend', (e) => {
-                // --- Double-tap zoom prevention logic, now UI-aware ---
                 if (!isEventOnUI(e)) {
                     const now = (new Date()).getTime();
-                    if (now - lastTouchEnd <= 300) {
-                        e.preventDefault();
-                    }
+                    if (now - lastTouchEnd <= 300) e.preventDefault();
                     lastTouchEnd = now;
                 }
 
-                for(let touch of e.changedTouches){ activeTouches.delete(touch.identifier); }
-                if (activeTouches.size < 1) {
+                for(let touch of e.changedTouches) {
+                    activeTouches.delete(touch.identifier);
+                }
+                
+                // If we are back to one finger, resume drawing. Otherwise, stop all actions.
+                if (activeTouches.size === 1) {
+                    isDrawing = true;
+                } else {
                     isDrawing = false;
                 }
             });
