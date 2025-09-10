@@ -1,0 +1,1601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Poly-Sim: Self-Organizing Networks</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: #000;
+            font-family: 'Arial', sans-serif;
+            overflow: hidden;
+            touch-action: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        canvas {
+            display: block;
+            cursor: crosshair;
+            touch-action: none;
+        }
+        
+        .ui-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            z-index: 100;
+        }
+        
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.95);
+            padding: 20px;
+            border-radius: 15px;
+            color: white;
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            transition: all 0.3s ease;
+            pointer-events: auto;
+            max-height: 70vh;
+            overflow-y: auto;
+            touch-action: auto; /* Added this line to re-enable scrolling on the panel */
+        }
+        
+        .controls.collapsed {
+            transform: translateY(calc(100% - 60px));
+        }
+        
+        .controls-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            cursor: pointer;
+            padding: 5px;
+            border-radius: 8px;
+            transition: background 0.3s ease;
+        }
+        
+        .controls-header:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        
+        .controls-header h3 {
+            margin: 0;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .gpu-indicator {
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: bold;
+        }
+        
+        .gpu-indicator.gpu-on {
+            background: rgba(76, 175, 80, 0.3);
+            border: 1px solid rgba(76, 175, 80, 0.5);
+            color: #4CAF50;
+        }
+        
+        .gpu-indicator.gpu-off {
+            background: rgba(255, 152, 0, 0.3);
+            border: 1px solid rgba(255, 152, 0, 0.5);
+            color: #FF9800;
+        }
+        
+        .toggle-btn {
+            width: 30px;
+            height: 30px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+
+.header-buttons {
+            display: flex;
+            align-items: center;
+            gap: 10px; /* Adds space between the fullscreen and collapse buttons */
+            /* Prevents the main header's click event from firing when a button is clicked */
+            pointer-events: auto; 
+            z-index: 1;
+        }
+        
+        /* Stop the buttons from also triggering the collapse action */
+        .header-buttons .toggle-btn {
+            pointer-events: auto;
+        }
+
+        .toggle-btn svg {
+            width: 18px;
+            height: 18px;
+            fill: white;
+            display: block;
+        }        
+        
+        .toggle-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: scale(1.05);
+        }
+        
+        .controls-content {
+            transition: opacity 0.3s ease, max-height 0.3s ease;
+            overflow: hidden;
+        }
+        
+        .controls.collapsed .controls-content {
+            opacity: 0;
+            max-height: 0;
+        }
+        
+        .section {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        
+        .section-title {
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 12px;
+            opacity: 0.9;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .preset-selector {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        
+        .preset-btn {
+            padding: 10px 8px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 8px;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        
+        .preset-btn:hover {
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateY(-1px);
+        }
+        
+        .preset-btn.active {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(100, 200, 255, 0.4);
+        }
+        
+        .preset-btn.physarum.active {
+            background: rgba(100, 255, 100, 0.2);
+            border-color: rgba(100, 255, 100, 0.4);
+        }
+        
+        .preset-btn.plasma.active {
+            background: rgba(100, 150, 255, 0.2);
+            border-color: rgba(100, 150, 255, 0.4);
+        }
+        
+        .preset-btn.neural.active {
+            background: rgba(0, 255, 255, 0.2);
+            border-color: rgba(0, 255, 255, 0.4);
+        }
+        
+        .preset-btn.scientific.active {
+            background: rgba(255, 165, 0, 0.2);
+            border-color: rgba(255, 165, 0, 0.4);
+        }
+        
+        .color-mode-selector {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 6px;
+            margin-bottom: 12px;
+        }
+        
+        .color-mode-btn {
+            padding: 6px 4px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+            font-size: 10px;
+        }
+        
+        .color-mode-btn.active {
+            background: rgba(255, 165, 0, 0.3);
+            border-color: rgba(255, 165, 0, 0.5);
+        }
+        
+        .control-group {
+            margin-bottom: 12px;
+        }
+        
+        .control-group label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+            font-size: 11px;
+            opacity: 0.9;
+        }
+        
+        .slider {
+            width: 100%;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 2px;
+            outline: none;
+            -webkit-appearance: none;
+            appearance: none;
+        }
+        
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            background: #fff;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+        }
+        
+        .slider::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            background: #fff;
+            border-radius: 50%;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+        }
+        
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+        
+        .checkbox-group input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+        }
+        
+        .checkbox-group label {
+            font-size: 11px;
+            margin: 0;
+        }
+        
+        .button-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            margin-top: 12px;
+        }
+        
+        .button-grid.three-col {
+            grid-template-columns: repeat(3, 1fr);
+        }
+        
+        .action-btn {
+            padding: 10px 8px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            color: white;
+            cursor: pointer;
+            text-align: center;
+            font-size: 11px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+        }
+        
+        .action-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        }
+        
+        .reset-btn {
+            background: rgba(255, 100, 100, 0.2);
+            border-color: rgba(255, 100, 100, 0.4);
+        }
+        
+        .pause-btn {
+            background: rgba(255, 200, 100, 0.2);
+            border-color: rgba(255, 200, 100, 0.4);
+        }
+        
+        .maze-btn {
+            background: rgba(150, 100, 255, 0.2);
+            border-color: rgba(150, 100, 255, 0.4);
+        }
+        
+        .file-input-wrapper {
+            position: relative;
+            margin-bottom: 8px;
+        }
+        
+        .file-input {
+            position: absolute;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+        
+        .file-input-display {
+            padding: 8px 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 6px;
+            font-size: 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .file-input-display:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .info-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 15px;
+            border-radius: 10px;
+            color: white;
+            font-size: 12px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            pointer-events: auto;
+            transition: opacity 0.3s ease;
+        }
+        
+        .info-panel.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        
+        .fps-counter {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 11px;
+            pointer-events: auto;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .version-info {
+            text-align: center;
+            padding: 12px;
+            font-size: 10px;
+            opacity: 0.6;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            margin-top: 15px;
+        }
+        
+        .version-info a {
+            color: #64B5F6;
+            text-decoration: none;
+        }
+        
+        .version-info a:hover {
+            text-decoration: underline;
+        }
+        
+        @media (max-width: 600px) {
+            .controls {
+                left: 10px;
+                right: 10px;
+                bottom: 10px;
+                padding: 15px;
+            }
+            
+            .info-panel {
+                left: 10px;
+                right: 10px;
+                top: 10px;
+            }
+            
+            .preset-selector {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 6px;
+            }
+            
+            .color-mode-selector {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        
+        @media (orientation: landscape) and (max-height: 500px) {
+            .controls {
+                max-height: 80vh;
+                left: 10px;
+                right: 300px;
+            }
+            
+            .fps-counter {
+                right: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    
+    <div class="ui-overlay">
+        <div class="controls" id="controls">
+        <div class="controls-header" id="controlsHeader">
+                <h3>
+                    Poly-Sim 
+                    <span class="gpu-indicator" id="gpuIndicator">CPU</span>
+                </h3>
+                <div class="header-buttons">
+                    <div class="toggle-btn" id="fullscreenBtn">
+                        <!-- Fullscreen icon will be inserted here by JavaScript -->
+                    </div>
+                    <div class="toggle-btn" id="toggleBtn">▲</div>
+                </div>
+            </div>
+            
+            <div class="controls-content">
+                <!-- Simulation Presets -->
+                <div class="section">
+                    <div class="section-title">Simulation Mode</div>
+                    <div class="preset-selector">
+                        <div class="preset-btn physarum active" data-preset="physarum">Physarum</div>
+                        <div class="preset-btn plasma" data-preset="plasma">Plasma</div>
+                        <div class="preset-btn neural" data-preset="neural">Neural</div>
+                        <div class="preset-btn scientific" data-preset="scientific">Scientific</div>
+                    </div>
+                    <div class="color-mode-selector">
+                        <div class="color-mode-btn active" data-mode="natural">Natural</div>
+                        <div class="color-mode-btn" data-mode="scientific">Analysis</div>
+                        <div class="color-mode-btn" data-mode="thermal">Thermal</div>
+                        <div class="color-mode-btn" data-mode="neon">Neon</div>
+                    </div>
+                </div>
+                
+                <!-- Environment Controls -->
+                <div class="section">
+                    <div class="section-title">Environment</div>
+                    <div class="file-input-wrapper">
+                        <input type="file" class="file-input" id="maskInput" accept="image/*">
+                        <div class="file-input-display">Load Environment Mask</div>
+                    </div>
+                    <div class="button-grid three-col">
+                        <div class="action-btn maze-btn" onclick="generateMaze()">Gen Maze</div>
+                        <div class="action-btn maze-btn" onclick="clearMask()">Clear</div>
+                        <div class="action-btn maze-btn" onclick="invertMask()">Invert</div>
+                    </div>
+                </div>
+                
+                <!-- Performance Settings -->
+                <div class="section">
+                    <div class="section-title">Performance</div>
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="gpuToggle">
+                        <label for="gpuToggle">GPU Acceleration <span id="gpuStatus">(Checking...)</span></label>
+                    </div>
+                    <div class="control-group">
+                        <label>Agent Count <span id="agentCountValue">50000</span></label>
+                        <input type="range" class="slider" id="agentCount" min="5000" max="100000" value="50000" step="5000">
+                    </div>
+                </div>
+                
+                <!-- Simulation Parameters -->
+                <div class="section">
+                    <div class="section-title">Parameters</div>
+                    <div class="control-group">
+                        <label>Sensor Angle <span id="sensorAngleValue">22.5°</span></label>
+                        <input type="range" class="slider" id="sensorAngle" min="5" max="90" value="22.5" step="2.5">
+                    </div>
+                    <div class="control-group">
+                        <label>Decay Rate <span id="decayRateValue">0.980</span></label>
+                        <input type="range" class="slider" id="decayRate" min="0.900" max="0.999" value="0.980" step="0.001">
+                    </div>
+                    <div class="control-group">
+                        <label>Deposit Strength <span id="depositStrengthValue">0.10</span></label>
+                        <input type="range" class="slider" id="depositStrength" min="0.01" max="0.5" value="0.10" step="0.01">
+                    </div>
+                    <div class="control-group">
+                        <label>Speed <span id="speedValue">1.0</span></label>
+                        <input type="range" class="slider" id="speed" min="0.1" max="5.0" value="1.0" step="0.1">
+                    </div>
+                </div>
+                
+                <!-- Advanced Features -->
+                <div class="section">
+                    <div class="section-title">Neural Features</div>
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="neuronFiring">
+                        <label for="neuronFiring">Simulate Neuron Firing</label>
+                    </div>
+                    <div class="control-group">
+                        <label>Firing Rate <span id="firingRateValue">0.02</span></label>
+                        <input type="range" class="slider" id="firingRate" min="0.001" max="0.1" value="0.02" step="0.001">
+                    </div>
+                </div>
+                
+                <!-- Action Buttons -->
+                <div class="button-grid">
+                    <div class="action-btn reset-btn" onclick="resetSimulation()">Reset</div>
+                    <div class="action-btn pause-btn" onclick="togglePause()">Pause</div>
+                </div>
+                
+                <!-- Version Info -->
+                <div class="version-info">
+                    <a href="https://github.io/sandner-art/Poly-Sim" target="_blank">Poly-Sim</a> v0.7.0<br>
+                    © Daniel Sandner • <a href="https://sandner.art" target="_blank">sandner.art</a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="fps-counter" id="fpsCounter">60 FPS</div>
+        
+        <div class="info-panel" id="infoPanel">
+            <strong>Touch and drag to spawn agents</strong><br>
+            Each preset simulates flow-reinforced conductivity principles<br>
+            <small>Tap here to hide • Tap controls to collapse</small>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let canvas, gl, ctx;
+        let width, height;
+        let animationId;
+        let isPaused = false;
+        let useGPU = false;
+        let currentColorMode = 'natural';
+        let simulationScale = 1.0;
+        
+        // Simulation state
+        let agents = [];
+        let conductivityField = [];
+        let tempField = [];
+        let maskField = [];
+        let firingField = [];
+        let hasMask = false;
+        
+        // GPU resources (placeholder - GPU implementation would require WebGL2 shaders)
+        let gpuSupported = false;
+        
+        // Performance tracking
+        let frameCount = 0;
+        let lastTime = 0;
+        let fps = 60;
+        
+        // Touch/mouse coordinate mapping
+        let viewTransform = {
+            offsetX: 0,
+            offsetY: 0,
+            scaleX: 1,
+            scaleY: 1
+        };
+        
+        // Simulation parameters
+        let params = {
+            agentCount: 50000,
+            sensorAngle: 22.5 * Math.PI / 180,
+            sensorDistance: 9.0,
+            stepSize: 1.0,
+            decayRate: 0.980,
+            depositStrength: 0.10,
+            speed: 1.0,
+            diffusionRate: 0.1,
+            neuronFiring: false,
+            firingRate: 0.02
+        };
+        
+        // Color palettes
+        const colorModes = {
+            natural: {
+                physarum: {
+                    color1: [0.05, 0.02, 0.0],
+                    color2: [0.4, 0.8, 0.2],
+                    color3: [0.9, 0.9, 0.4]
+                },
+                plasma: {
+                    color1: [0.0, 0.0, 0.1],
+                    color2: [0.3, 0.1, 0.8],
+                    color3: [0.9, 0.7, 1.0]
+                },
+                neural: {
+                    color1: [0.0, 0.05, 0.1],
+                    color2: [0.0, 0.4, 0.8],
+                    color3: [0.3, 0.8, 1.0]
+                },
+                scientific: {
+                    color1: [0.1, 0.1, 0.1],
+                    color2: [0.8, 0.4, 0.0],
+                    color3: [1.0, 0.8, 0.2]
+                }
+            },
+            scientific: {
+                physarum: {
+                    color1: [0.0, 0.0, 0.2],
+                    color2: [0.0, 0.8, 0.8],
+                    color3: [1.0, 1.0, 0.0]
+                },
+                plasma: {
+                    color1: [0.2, 0.0, 0.0],
+                    color2: [0.8, 0.0, 0.8],
+                    color3: [1.0, 0.5, 0.0]
+                },
+                neural: {
+                    color1: [0.0, 0.0, 0.0],
+                    color2: [0.0, 1.0, 0.0],
+                    color3: [1.0, 0.0, 0.0]
+                },
+                scientific: {
+                    color1: [0.0, 0.0, 0.0],
+                    color2: [0.5, 0.5, 0.5],
+                    color3: [1.0, 1.0, 1.0]
+                }
+            },
+            thermal: {
+                physarum: {
+                    color1: [0.0, 0.0, 0.2],
+                    color2: [0.8, 0.0, 0.0],
+                    color3: [1.0, 1.0, 0.0]
+                },
+                plasma: {
+                    color1: [0.0, 0.0, 0.0],
+                    color2: [0.5, 0.0, 0.5],
+                    color3: [1.0, 0.0, 1.0]
+                },
+                neural: {
+                    color1: [0.0, 0.0, 0.4],
+                    color2: [0.0, 0.5, 1.0],
+                    color3: [1.0, 1.0, 1.0]
+                },
+                scientific: {
+                    color1: [0.0, 0.0, 0.5],
+                    color2: [1.0, 0.5, 0.0],
+                    color3: [1.0, 1.0, 0.5]
+                }
+            },
+            neon: {
+                physarum: {
+                    color1: [0.1, 0.0, 0.1],
+                    color2: [0.0, 1.0, 0.5],
+                    color3: [0.5, 1.0, 1.0]
+                },
+                plasma: {
+                    color1: [0.1, 0.0, 0.2],
+                    color2: [1.0, 0.0, 1.0],
+                    color3: [0.0, 1.0, 1.0]
+                },
+                neural: {
+                    color1: [0.0, 0.1, 0.2],
+                    color2: [0.0, 1.0, 0.0],
+                    color3: [1.0, 1.0, 0.0]
+                },
+                scientific: {
+                    color1: [0.2, 0.0, 0.2],
+                    color2: [1.0, 0.0, 0.0],
+                    color3: [0.0, 0.0, 1.0]
+                }
+            }
+        };
+        
+        // Presets
+        const presets = {
+            physarum: {
+                agentCount: 50000,
+                sensorAngle: 22.5 * Math.PI / 180,
+                decayRate: 0.980,
+                depositStrength: 0.10,
+                speed: 1.0,
+                diffusionRate: 0.3
+            },
+            plasma: {
+                agentCount: 80000,
+                sensorAngle: 45 * Math.PI / 180,
+                decayRate: 0.950,
+                depositStrength: 0.20,
+                speed: 2.5,
+                diffusionRate: 0.1
+            },
+            neural: {
+                agentCount: 30000,
+                sensorAngle: 30 * Math.PI / 180,
+                decayRate: 0.995,
+                depositStrength: 0.05,
+                speed: 0.8,
+                diffusionRate: 0.05
+            },
+            scientific: {
+                agentCount: 60000,
+                sensorAngle: 35 * Math.PI / 180,
+                decayRate: 0.985,
+                depositStrength: 0.15,
+                speed: 1.2,
+                diffusionRate: 0.2
+            }
+        };
+        
+        let currentPreset = 'physarum';
+        
+        // Agent class
+        class Agent {
+            constructor(x, y, angle) {
+                this.x = x || Math.random() * width;
+                this.y = y || Math.random() * height;
+                this.angle = angle || Math.random() * Math.PI * 2;
+                this.dx = Math.cos(this.angle);
+                this.dy = Math.sin(this.angle);
+            }
+            
+            update() {
+                // Sample conductivity at sensor positions
+                const sensorDist = params.sensorDistance;
+                const sensorAngle = params.sensorAngle;
+                
+                const leftAngle = this.angle - sensorAngle;
+                const rightAngle = this.angle + sensorAngle;
+                
+                const leftX = this.x + Math.cos(leftAngle) * sensorDist;
+                const leftY = this.y + Math.sin(leftAngle) * sensorDist;
+                const rightX = this.x + Math.cos(rightAngle) * sensorDist;
+                const rightY = this.y + Math.sin(rightAngle) * sensorDist;
+                const centerX = this.x + Math.cos(this.angle) * sensorDist;
+                const centerY = this.y + Math.sin(this.angle) * sensorDist;
+                
+                const leftVal = sampleConductivity(leftX, leftY);
+                const rightVal = sampleConductivity(rightX, rightY);
+                const centerVal = sampleConductivity(centerX, centerY);
+                
+                // Check mask collision
+                if (hasMask && !canMoveTo(this.x, this.y)) {
+                    this.angle += (Math.random() - 0.5) * Math.PI;
+                    this.dx = Math.cos(this.angle);
+                    this.dy = Math.sin(this.angle);
+                    return;
+                }
+                
+                // Determine steering direction
+                let steerAngle = 0;
+                if (centerVal > leftVal && centerVal > rightVal) {
+                    steerAngle = 0;
+                } else if (leftVal > rightVal) {
+                    steerAngle = -sensorAngle * 0.1;
+                } else if (rightVal > leftVal) {
+                    steerAngle = sensorAngle * 0.1;
+                } else {
+                    steerAngle = (Math.random() - 0.5) * sensorAngle * 0.2;
+                }
+                
+                // Apply steering
+                this.angle += steerAngle;
+                this.dx = Math.cos(this.angle);
+                this.dy = Math.sin(this.angle);
+                
+                // Move agent
+                const newX = this.x + this.dx * params.stepSize * params.speed;
+                const newY = this.y + this.dy * params.stepSize * params.speed;
+                
+                // Check if new position is valid
+                if (!hasMask || canMoveTo(newX, newY)) {
+                    this.x = (newX + width) % width;
+                    this.y = (newY + height) % height;
+                } else {
+                    // Bounce off walls if mask collision
+                    this.angle += (Math.random() - 0.5) * Math.PI * 0.5;
+                    this.dx = Math.cos(this.angle);
+                    this.dy = Math.sin(this.angle);
+                }
+                
+                // Deposit trail
+                depositAt(Math.floor(this.x), Math.floor(this.y), params.depositStrength);
+                
+                // Neuron firing simulation
+                if (params.neuronFiring && Math.random() < params.firingRate) {
+                    const fireRadius = 5;
+                    for (let dy = -fireRadius; dy <= fireRadius; dy++) {
+                        for (let dx = -fireRadius; dx <= fireRadius; dx++) {
+                            const dist = Math.sqrt(dx*dx + dy*dy);
+                            if (dist <= fireRadius) {
+                                const fx = Math.floor(this.x + dx);
+                                const fy = Math.floor(this.y + dy);
+                                if (fx >= 0 && fx < width && fy >= 0 && fy < height) {
+                                    const index = fy * width + fx;
+                                    const strength = (1 - dist / fireRadius) * 0.3;
+                                    firingField[index] = Math.min(1.0, (firingField[index] || 0) + strength);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        function sampleConductivity(x, y) {
+            x = Math.floor((x + width) % width);
+            y = Math.floor((y + height) % height);
+            
+            if (x < 0 || x >= width || y < 0 || y >= height) return 0;
+            
+            const index = y * width + x;
+            return conductivityField[index] || 0;
+        }
+        
+        function canMoveTo(x, y) {
+            if (!hasMask) return true;
+            
+            const ix = Math.floor(x);
+            const iy = Math.floor(y);
+            
+            if (ix < 0 || ix >= width || iy < 0 || iy >= height) return false;
+            
+            const index = iy * width + ix;
+            return maskField[index] > 0.5; // White pixels are passable
+        }
+        
+        function depositAt(x, y, strength) {
+            if (x < 0 || x >= width || y < 0 || y >= height) return;
+            
+            const index = y * width + x;
+            conductivityField[index] = Math.min(1.0, (conductivityField[index] || 0) + strength);
+        }
+        
+        function calculateOptimalDimensions() {
+            const dpr = window.devicePixelRatio || 1;
+            const rect = canvas.getBoundingClientRect();
+            
+            // Base resolution on screen size and performance considerations
+            let baseWidth = Math.min(rect.width * dpr, 1200);
+            let baseHeight = Math.min(rect.height * dpr, 800);
+            
+            // Scale down for mobile devices to maintain performance
+            const isMobile = window.innerWidth < 768;
+            if (isMobile) {
+                baseWidth = Math.min(baseWidth, 600);
+                baseHeight = Math.min(baseHeight, 400);
+            }
+            
+            // Maintain aspect ratio
+            const aspectRatio = rect.width / rect.height;
+            if (aspectRatio > 1) {
+                baseHeight = Math.floor(baseWidth / aspectRatio);
+            } else {
+                baseWidth = Math.floor(baseHeight * aspectRatio);
+            }
+            
+            return { width: baseWidth, height: baseHeight };
+        }
+        
+        function updateViewTransform() {
+            const rect = canvas.getBoundingClientRect();
+            viewTransform.scaleX = width / rect.width;
+            viewTransform.scaleY = height / rect.height;
+            viewTransform.offsetX = 0;
+            viewTransform.offsetY = 0;
+        }
+        
+        function screenToSimCoords(screenX, screenY) {
+            const rect = canvas.getBoundingClientRect();
+            const x = (screenX - rect.left) * viewTransform.scaleX;
+            const y = (screenY - rect.top) * viewTransform.scaleY;
+            return { x: Math.max(0, Math.min(width - 1, x)), y: Math.max(0, Math.min(height - 1, y)) };
+        }
+        
+        function initializeSimulation() {
+            const dimensions = calculateOptimalDimensions();
+            width = dimensions.width;
+            height = dimensions.height;
+            
+            // Initialize fields
+            conductivityField = new Float32Array(width * height);
+            tempField = new Float32Array(width * height);
+            firingField = new Float32Array(width * height);
+            
+            // Initialize agents
+            agents = [];
+            const centerX = width * 0.5;
+            const centerY = height * 0.5;
+            const radius = Math.min(width, height) * 0.3;
+            
+            for (let i = 0; i < params.agentCount; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const r = Math.random() * radius;
+                const x = centerX + Math.cos(angle) * r;
+                const y = centerY + Math.sin(angle) * r;
+                agents.push(new Agent(x, y, angle));
+            }
+            
+            updateViewTransform();
+        }
+        
+        function updateSimulation() {
+            if (isPaused) return;
+            
+            // Update agents
+            for (let agent of agents) {
+                agent.update();
+            }
+            
+            // Apply decay and diffusion
+            for (let i = 0; i < conductivityField.length; i++) {
+                conductivityField[i] *= params.decayRate;
+            }
+            
+            applyDiffusion();
+            
+            // Update firing field decay
+            if (params.neuronFiring) {
+                for (let i = 0; i < firingField.length; i++) {
+                    firingField[i] *= 0.95; // Firing decay
+                }
+            }
+        }
+        
+        function applyDiffusion() {
+            const diffusion = presets[currentPreset].diffusionRate;
+            
+            for (let y = 1; y < height - 1; y++) {
+                for (let x = 1; x < width - 1; x++) {
+                    const index = y * width + x;
+                    
+                    let sum = 0;
+                    sum += conductivityField[index - width - 1] * 0.05; // Top-left
+                    sum += conductivityField[index - width] * 0.1;     // Top
+                    sum += conductivityField[index - width + 1] * 0.05; // Top-right
+                    sum += conductivityField[index - 1] * 0.1;         // Left
+                    sum += conductivityField[index] * 0.4;             // Center
+                    sum += conductivityField[index + 1] * 0.1;         // Right
+                    sum += conductivityField[index + width - 1] * 0.05; // Bottom-left
+                    sum += conductivityField[index + width] * 0.1;     // Bottom
+                    sum += conductivityField[index + width + 1] * 0.05; // Bottom-right
+                    
+                    tempField[index] = conductivityField[index] * (1 - diffusion) + sum * diffusion;
+                }
+            }
+            
+            // Swap arrays
+            [conductivityField, tempField] = [tempField, conductivityField];
+        }
+        
+        function renderSimulation() {
+            if (!canvas || !canvas.getContext) return;
+            
+            const ctx = canvas.getContext('2d');
+            const imageData = ctx.createImageData(width, height);
+            const data = imageData.data;
+            
+            const colors = colorModes[currentColorMode][currentPreset];
+            
+            for (let i = 0; i < conductivityField.length; i++) {
+                let intensity = conductivityField[i];
+                intensity = Math.pow(Math.min(1, intensity), 0.5); // Gamma correction
+                
+                // Add firing effect if enabled
+                if (params.neuronFiring && firingField[i] > 0) {
+                    intensity = Math.min(1, intensity + firingField[i] * 0.5);
+                }
+                
+                let r, g, b;
+                
+                if (intensity < 0.5) {
+                    const t = intensity * 2;
+                    r = colors.color1[0] * (1 - t) + colors.color2[0] * t;
+                    g = colors.color1[1] * (1 - t) + colors.color2[1] * t;
+                    b = colors.color1[2] * (1 - t) + colors.color2[2] * t;
+                } else {
+                    const t = (intensity - 0.5) * 2;
+                    r = colors.color2[0] * (1 - t) + colors.color3[0] * t;
+                    g = colors.color2[1] * (1 - t) + colors.color3[1] * t;
+                    b = colors.color2[2] * (1 - t) + colors.color3[2] * t;
+                }
+                
+                const pixelIndex = i * 4;
+                data[pixelIndex] = r * 255;     // Red
+                data[pixelIndex + 1] = g * 255; // Green
+                data[pixelIndex + 2] = b * 255; // Blue
+                data[pixelIndex + 3] = 255;     // Alpha
+            }
+            
+            // Scale up to canvas size
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = width;
+            tempCanvas.height = height;
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCtx.putImageData(imageData, 0, 0);
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.imageSmoothingEnabled = false;
+            ctx.drawImage(tempCanvas, 0, 0, width, height, 0, 0, canvas.width, canvas.height);
+        }
+        
+        function animate(currentTime) {
+            // Calculate FPS
+            frameCount++;
+            if (currentTime - lastTime >= 1000) {
+                fps = Math.round(frameCount * 1000 / (currentTime - lastTime));
+                document.getElementById('fpsCounter').textContent = fps + ' FPS';
+                frameCount = 0;
+                lastTime = currentTime;
+            }
+            
+            updateSimulation();
+            renderSimulation();
+            
+            animationId = requestAnimationFrame(animate);
+        }
+        
+        function resize() {
+            const rect = canvas.getBoundingClientRect();
+            
+            // Set canvas display size
+            canvas.width = rect.width;
+            canvas.height = rect.height;
+            canvas.style.width = rect.width + 'px';
+            canvas.style.height = rect.height + 'px';
+            
+            initializeSimulation();
+        }
+        
+        function init() {
+            canvas = document.getElementById('canvas');
+            
+            // Make canvas fill viewport
+            canvas.style.position = 'fixed';
+            canvas.style.top = '0';
+            canvas.style.left = '0';
+            canvas.style.width = '100vw';
+            canvas.style.height = '100vh';
+            
+            // Check GPU support
+            checkGPUSupport();
+            
+            resize();
+            setupEventListeners();
+            animate(0);
+            
+            // Hide info after 5 seconds
+            setTimeout(() => {
+                document.getElementById('infoPanel').classList.add('hidden');
+            }, 5000);
+        }
+        
+        function checkGPUSupport() {
+            try {
+                const testCanvas = document.createElement('canvas');
+                gl = testCanvas.getContext('webgl2');
+                gpuSupported = !!gl;
+                
+                const gpuIndicator = document.getElementById('gpuIndicator');
+                const gpuStatus = document.getElementById('gpuStatus');
+                
+                if (gpuSupported) {
+                    gpuStatus.textContent = '(Available)';
+                    gpuIndicator.textContent = useGPU ? 'GPU' : 'CPU';
+                    gpuIndicator.className = useGPU ? 'gpu-indicator gpu-on' : 'gpu-indicator gpu-off';
+                } else {
+                    gpuStatus.textContent = '(Not Available)';
+                    document.getElementById('gpuToggle').disabled = true;
+                    useGPU = false;
+                    gpuIndicator.textContent = 'CPU';
+                    gpuIndicator.className = 'gpu-indicator gpu-off';
+                }
+            } catch (e) {
+                gpuSupported = false;
+                useGPU = false;
+                document.getElementById('gpuStatus').textContent = '(Not Available)';
+                document.getElementById('gpuToggle').disabled = true;
+            }
+        }
+        
+        function setupEventListeners() {
+            // Resize handler
+            window.addEventListener('resize', resize);
+            
+            // Touch and mouse events for spawning agents
+            let isDrawing = false;
+            
+            function startDrawing(x, y) {
+                isDrawing = true;
+                spawnAgentsAt(x, y);
+            }
+            
+            function continueDrawing(x, y) {
+                if (isDrawing) {
+                    spawnAgentsAt(x, y);
+                }
+            }
+            
+            function stopDrawing() {
+                isDrawing = false;
+            }
+            
+            // Mouse events
+            canvas.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                startDrawing(e.clientX, e.clientY);
+            });
+            
+            canvas.addEventListener('mousemove', (e) => {
+                e.preventDefault();
+                continueDrawing(e.clientX, e.clientY);
+            });
+            
+            canvas.addEventListener('mouseup', stopDrawing);
+            canvas.addEventListener('mouseleave', stopDrawing);
+            
+            // Touch events
+// --- REPLACEMENT FOR TOUCH EVENTS ---
+
+            // A flag to track if the current touch started on the UI
+            let isUITouch = false;
+
+            canvas.addEventListener('touchstart', (e) => {
+                const touch = e.touches[0];
+                // Check if the touch's target is any of our UI elements
+                if (touch.target.closest && (touch.target.closest('#controls') || touch.target.closest('#fpsCounter') || touch.target.closest('#infoPanel'))) {
+                    // If so, flag it as a UI touch and do nothing else.
+                    // This allows the browser to handle scrolling.
+                    isUITouch = true;
+                    return;
+                }
+                
+                // If it's not a UI touch, it's for the canvas.
+                isUITouch = false;
+                e.preventDefault();
+                startDrawing(touch.clientX, touch.clientY);
+            });
+
+            canvas.addEventListener('touchmove', (e) => {
+                // If the touch started on the UI, ignore it completely.
+                if (isUITouch) {
+                    return;
+                }
+                
+                // Otherwise, prevent default and draw on the canvas.
+                e.preventDefault();
+                const touch = e.touches[0];
+                continueDrawing(touch.clientX, touch.clientY);
+            }, { passive: false });
+
+            canvas.addEventListener('touchend', (e) => {
+                // If this was a UI touch, just reset the flag and we're done.
+                if (isUITouch) {
+                    isUITouch = false;
+                    return;
+                }
+                
+                // Otherwise, it was a canvas touch, so stop drawing.
+                e.preventDefault();
+                stopDrawing();
+            });
+            
+            // Prevent context menu on long press
+            canvas.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+            });
+            
+            // Control event listeners
+            setupControlListeners();
+        }
+        
+function setupControlListeners() {
+            // Controls header click handler (moved from HTML)
+            document.getElementById('controlsHeader').addEventListener('click', (e) => {
+                // Do not collapse the panel if the click landed on the fullscreen button.
+                // That button has its own dedicated click listener.
+                if (e.target.closest('#fullscreenBtn')) {
+                    return;
+                }
+                
+                // For any other click on the header (title, empty space, OR the collapse button),
+                // run the toggle function.
+                toggleControls();
+            });
+            // Preset buttons
+            document.querySelectorAll('.preset-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    setPreset(btn.dataset.preset);
+                });
+            });
+            
+            // Color mode buttons
+            document.querySelectorAll('.color-mode-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    setColorMode(btn.dataset.mode);
+                });
+            });
+            
+            // GPU toggle
+            document.getElementById('gpuToggle').addEventListener('change', (e) => {
+                useGPU = e.target.checked && gpuSupported;
+                const gpuIndicator = document.getElementById('gpuIndicator');
+                gpuIndicator.textContent = useGPU ? 'GPU' : 'CPU';
+                gpuIndicator.className = useGPU ? 'gpu-indicator gpu-on' : 'gpu-indicator gpu-off';
+                initializeSimulation();
+            });
+            
+            // Neuron firing toggle
+            document.getElementById('neuronFiring').addEventListener('change', (e) => {
+                params.neuronFiring = e.target.checked;
+            });
+            
+            // Slider event listeners
+            document.getElementById('agentCount').addEventListener('input', (e) => {
+                params.agentCount = parseInt(e.target.value);
+                updateSliderDisplays();
+                initializeSimulation();
+            });
+            
+            document.getElementById('sensorAngle').addEventListener('input', (e) => {
+                params.sensorAngle = parseFloat(e.target.value) * Math.PI / 180;
+                updateSliderDisplays();
+            });
+            
+            document.getElementById('decayRate').addEventListener('input', (e) => {
+                params.decayRate = parseFloat(e.target.value);
+                updateSliderDisplays();
+            });
+            
+            document.getElementById('depositStrength').addEventListener('input', (e) => {
+                params.depositStrength = parseFloat(e.target.value);
+                updateSliderDisplays();
+            });
+            
+            document.getElementById('speed').addEventListener('input', (e) => {
+                params.speed = parseFloat(e.target.value);
+                updateSliderDisplays();
+            });
+            
+            document.getElementById('firingRate').addEventListener('input', (e) => {
+                params.firingRate = parseFloat(e.target.value);
+                updateSliderDisplays();
+            });
+            
+            // File input for mask loading
+            document.getElementById('maskInput').addEventListener('change', loadMaskFile);
+            
+            // Info panel click to hide
+            document.getElementById('infoPanel').addEventListener('click', () => {
+                document.getElementById('infoPanel').classList.add('hidden');
+            });
+
+            // Fullscreen button
+            document.getElementById('fullscreenBtn').addEventListener('click', toggleFullscreen);
+            
+            // Listen for fullscreen changes (e.g., user pressing ESC)
+            document.addEventListener('fullscreenchange', updateFullscreenIcon);
+            document.addEventListener('webkitfullscreenchange', updateFullscreenIcon); // For Safari
+            
+            // Set the initial icon state
+            updateFullscreenIcon();            
+        }
+        
+        function spawnAgentsAt(screenX, screenY) {
+            const coords = screenToSimCoords(screenX, screenY);
+            
+            // Spawn multiple agents in a small radius
+            const spawnCount = Math.min(100, Math.floor(params.agentCount * 0.001));
+            for (let i = 0; i < spawnCount; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const radius = Math.random() * 20;
+                const agentX = coords.x + Math.cos(angle) * radius;
+                const agentY = coords.y + Math.sin(angle) * radius;
+                
+                // Replace a random existing agent or add new one
+                const index = Math.floor(Math.random() * agents.length);
+                if (index < agents.length) {
+                    agents[index] = new Agent(agentX, agentY, angle);
+                }
+            }
+        }
+        
+        // UI Functions
+        function toggleControls() {
+            const controls = document.getElementById('controls');
+            const toggleBtn = document.getElementById('toggleBtn');
+            
+            controls.classList.toggle('collapsed');
+            toggleBtn.textContent = controls.classList.contains('collapsed') ? '▼' : '▲';
+        }
+        
+        function setPreset(presetName) {
+            currentPreset = presetName;
+            
+            // Update active button
+            document.querySelectorAll('.preset-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.querySelector(`[data-preset="${presetName}"]`).classList.add('active');
+            
+            // Apply preset parameters
+            const preset = presets[presetName];
+            Object.assign(params, preset);
+            
+            // Update slider values
+            document.getElementById('agentCount').value = preset.agentCount;
+            document.getElementById('sensorAngle').value = preset.sensorAngle * 180 / Math.PI;
+            document.getElementById('decayRate').value = preset.decayRate;
+            document.getElementById('depositStrength').value = preset.depositStrength;
+            document.getElementById('speed').value = preset.speed;
+            
+            updateSliderDisplays();
+            initializeSimulation();
+        }
+        
+        function setColorMode(modeName) {
+            currentColorMode = modeName;
+            
+            // Update active button
+            document.querySelectorAll('.color-mode-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.querySelector(`[data-mode="${modeName}"]`).classList.add('active');
+        }
+        
+        function updateSliderDisplays() {
+            document.getElementById('agentCountValue').textContent = params.agentCount.toLocaleString();
+            document.getElementById('sensorAngleValue').textContent = (params.sensorAngle * 180 / Math.PI).toFixed(1) + '°';
+            document.getElementById('decayRateValue').textContent = params.decayRate.toFixed(3);
+            document.getElementById('depositStrengthValue').textContent = params.depositStrength.toFixed(2);
+            document.getElementById('speedValue').textContent = params.speed.toFixed(1);
+            document.getElementById('firingRateValue').textContent = params.firingRate.toFixed(3);
+        }
+        
+        function resetSimulation() {
+            // Clear fields
+            conductivityField.fill(0);
+            tempField.fill(0);
+            firingField.fill(0);
+            
+            // Reinitialize agents
+            initializeSimulation();
+        }
+        
+        function togglePause() {
+            isPaused = !isPaused;
+            const btn = document.querySelector('.pause-btn');
+            btn.textContent = isPaused ? 'Resume' : 'Pause';
+            
+            if (isPaused) {
+                btn.style.background = 'rgba(100, 255, 100, 0.3)';
+                btn.style.borderColor = 'rgba(100, 255, 100, 0.5)';
+            } else {
+                btn.style.background = 'rgba(255, 200, 100, 0.3)';
+                btn.style.borderColor = 'rgba(255, 200, 100, 0.5)';
+            }
+        }
+        
+        // Maze generation function
+        function generateMaze() {
+            const cellSize = 8;
+            const mazeWidth = Math.floor(width / cellSize);
+            const mazeHeight = Math.floor(height / cellSize);
+            
+            // Initialize maze grid (0 = wall, 1 = path)
+            const maze = Array(mazeHeight).fill().map(() => Array(mazeWidth).fill(0));
+            
+            // Simple maze generation using recursive backtracking
+            const stack = [];
+            const visited = Array(mazeHeight).fill().map(() => Array(mazeWidth).fill(false));
+            
+            function getNeighbors(x, y) {
+                const neighbors = [];
+                const directions = [[0, -2], [2, 0], [0, 2], [-2, 0]];
+                
+                for (const [dx, dy] of directions) {
+                    const nx = x + dx;
+                    const ny = y + dy;
+                    if (nx >= 0 && nx < mazeWidth && ny >= 0 && ny < mazeHeight && !visited[ny][nx]) {
+                        neighbors.push([nx, ny]);
+                    }
+                }
+                return neighbors;
+            }
+            
+            // Start from random position
+            let currentX = Math.floor(Math.random() * (mazeWidth / 2)) * 2;
+            let currentY = Math.floor(Math.random() * (mazeHeight / 2)) * 2;
+            
+            visited[currentY][currentX] = true;
+            maze[currentY][currentX] = 1;
+            stack.push([currentX, currentY]);
+            
+            while (stack.length > 0) {
+                const neighbors = getNeighbors(currentX, currentY);
+                
+                if (neighbors.length > 0) {
+                    const [nextX, nextY] = neighbors[Math.floor(Math.random() * neighbors.length)];
+                    
+                    // Remove wall between current and next cell
+                    const wallX = currentX + (nextX - currentX) / 2;
+                    const wallY = currentY + (nextY - currentY) / 2;
+                    maze[wallY][wallX] = 1;
+                    maze[nextY][nextX] = 1;
+                    
+                    visited[nextY][nextX] = true;
+                    stack.push([nextX, nextY]);
+                    currentX = nextX;
+                    currentY = nextY;
+                } else {
+                    const [prevX, prevY] = stack.pop();
+                    currentX = prevX;
+                    currentY = prevY;
+                }
+            }
+            
+            // Convert maze to mask field
+            maskField = new Float32Array(width * height);
+            for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    const mazeX = Math.floor(x / cellSize);
+                    const mazeY = Math.floor(y / cellSize);
+                    const index = y * width + x;
+                    maskField[index] = maze[mazeY] && maze[mazeY][mazeX] ? 1.0 : 0.0;
+                }
+            }
+            
+            hasMask = true;
+            initializeSimulation();
+        }
+        
+        function clearMask() {
+            hasMask = false;
+            maskField = [];
+            initializeSimulation();
+        }
+        
+        function invertMask() {
+            if (!hasMask) return;
+            
+            for (let i = 0; i < maskField.length; i++) {
+                maskField[i] = 1.0 - maskField[i];
+            }
+            initializeSimulation();
+        }
+        
+        function loadMaskFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = function() {
+                    // Create temporary canvas to process image
+                    const tempCanvas = document.createElement('canvas');
+                    tempCanvas.width = width;
+                    tempCanvas.height = height;
+                    const tempCtx = tempCanvas.getContext('2d');
+                    
+                    // Draw and scale image
+                    tempCtx.drawImage(img, 0, 0, width, height);
+                    const imageData = tempCtx.getImageData(0, 0, width, height);
+                    const data = imageData.data;
+                    
+                    // Convert to grayscale mask
+                    maskField = new Float32Array(width * height);
+                    for (let i = 0; i < data.length; i += 4) {
+                        const grayscale = (data[i] + data[i + 1] + data[i + 2]) / 3;
+                        maskField[i / 4] = grayscale / 255.0;
+                    }
+                    
+                    hasMask = true;
+                    initializeSimulation();
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+        
+        // Initialize the application when DOM is loaded
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
+        } else {
+            init();
+        }
+        
+        // Prevent zoom on double tap (mobile)
+        let lastTouchEnd = 0;
+        document.addEventListener('touchend', function (event) {
+            const now = (new Date()).getTime();
+            if (now - lastTouchEnd <= 300) {
+                event.preventDefault();
+            }
+            lastTouchEnd = now;
+        }, false);
+        
+        // Prevent pull-to-refresh
+        document.addEventListener('touchstart', function(e) {
+            if (e.touches.length > 1) {
+                e.preventDefault();
+            }
+        });
+        
+        document.addEventListener('touchmove', function(e) {
+            if (e.scale !== 1) {
+                e.preventDefault();
+            }
+        }, { passive: false });
+
+
+function toggleFullscreen() {
+            // This function handles entering and exiting fullscreen mode
+            if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+                if (document.documentElement.requestFullscreen) {
+                    document.documentElement.requestFullscreen();
+                } else if (document.documentElement.webkitRequestFullscreen) { /* Safari */
+                    document.documentElement.webkitRequestFullscreen();
+                }
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                } else if (document.webkitExitFullscreen) { /* Safari */
+                    document.webkitExitFullscreen();
+                }
+            }
+        }
+
+        function updateFullscreenIcon() {
+            // This function changes the icon based on the current fullscreen state
+            const fullscreenBtn = document.getElementById('fullscreenBtn');
+            if (!fullscreenBtn) return;
+            
+            const isFullscreen = !!(document.fullscreenElement || document.webkitFullscreenElement);
+            
+            if (isFullscreen) {
+                fullscreenBtn.innerHTML = `<svg viewBox="0 0 24 24"><path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z"/></svg>`;
+                fullscreenBtn.title = "Exit Fullscreen";
+            } else {
+                fullscreenBtn.innerHTML = `<svg viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>`;
+                fullscreenBtn.title = "Enter Fullscreen";
+            }
+        }        
+
+    </script>
+</body>
+</html>
