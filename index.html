@@ -1207,10 +1207,15 @@
 function setupControlListeners() {
             // Controls header click handler (moved from HTML)
             document.getElementById('controlsHeader').addEventListener('click', (e) => {
-                // Only toggle if the click is on the header itself, not the buttons
-                if (e.target.id === 'controlsHeader' || e.target.closest('h3')) {
-                    toggleControls();
+                // Do not collapse the panel if the click landed on the fullscreen button.
+                // That button has its own dedicated click listener.
+                if (e.target.closest('#fullscreenBtn')) {
+                    return;
                 }
+                
+                // For any other click on the header (title, empty space, OR the collapse button),
+                // run the toggle function.
+                toggleControls();
             });
             // Preset buttons
             document.querySelectorAll('.preset-btn').forEach(btn => {
