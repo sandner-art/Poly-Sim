@@ -7,6 +7,8 @@ Author: Daniel Sandner, September 2025
 
 Interactive, real-time art application for mobile devices that simulates and visualizes a universal principle of self-organization. It generates and compares complex, filamentary networks based on a single, unified algorithm. 
 
+> The current app is an implementation of a specific case (agent-based approximation of a global system on a 2D plane with simulated geometric effects)
+
 The user can interact with the simulation and switch between "skins" or presets that frame the same underlying process as different natural phenomena: the growth of a slime mold (Physarum), the behavior of astrophysical plasma, and the formation of neural pathways.
 
 > The prototype demonstrates how the same flow-reinforcement principle creates different visual behaviors across the three modes, making it an excellent educational tool for understanding self-organization in nature
