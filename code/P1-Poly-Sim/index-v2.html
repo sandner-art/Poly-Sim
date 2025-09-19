@@ -131,12 +131,6 @@
                     <div class="section-title">Environment</div>
                     <div class="checkbox-group" style="margin-bottom: 15px;"><input type="checkbox" id="hardBoundariesToggle"><label for="hardBoundariesToggle">Use Hard Boundaries</label></div>
                     <div class="file-input-wrapper"><input type="file" class="file-input" id="maskInput" accept="image/*"><div class="file-input-display">Load Environment Mask</div></div>
-
-
-<div class="checkbox-group" style="justify-content: center; margin-bottom: 10px;">
-    <input type="checkbox" id="maskAspectRatioToggle" checked>
-    <label for="maskAspectRatioToggle">Keep Image Aspect Ratio</label>
-</div>
                     <div class="button-grid three-col"><div class="action-btn maze-btn" onclick="generateMaze()">Gen Maze</div><div class="action-btn maze-btn" onclick="clearMask()">Clear</div><div class="action-btn maze-btn" onclick="invertMask()">Invert</div></div>
                 </div>
                 
@@ -162,14 +156,6 @@
                 <div class="section">
                     <div class="section-title">Geometric Criticality</div>
                     <div class="file-input-wrapper"><input type="file" class="file-input" id="curvatureMapInput" accept="image/*"><div class="file-input-display">Load Curvature Map</div></div>
-
-<!-- ADD THIS BLOCK -->
-<div class="checkbox-group" style="justify-content: center; margin-bottom: 10px;">
-    <input type="checkbox" id="curvatureAspectRatioToggle" checked>
-    <label for="curvatureAspectRatioToggle">Keep Image Aspect Ratio</label>
-</div>
-<!-- END OF BLOCK TO ADD -->
-                    
                     <div class="button-grid" style="margin-top: -4px; margin-bottom: 10px;"><div class="action-btn maze-btn" onclick="clearCurvatureMap()">Clear Map</div></div>
                     <div class="checkbox-group"><input type="checkbox" id="curvatureToggle"><label for="curvatureToggle">Enable Curvature Field</label></div>
                     <div class="control-group"><label>Curvature Strength <span id="curvatureStrengthValue">0.5</span></label><input type="range" class="slider" id="curvatureStrength" min="0.1" max="2.0" value="0.5" step="0.1"></div>
@@ -296,20 +282,9 @@
                     const speed = Math.sqrt(this.dx*this.dx + this.dy*this.dy); if(speed > 0){ this.dx /= speed; this.dy /= speed; }
                     this.angle = Math.atan2(this.dy, this.dx);
                 }
-
-let newX = this.x + this.dx * params.stepSize * params.speed;
-let newY = this.y + this.dy * params.stepSize * params.speed;
-
-// Hard boundary check: if mask value is less than 0.5, it's a wall.
-if (hasMask && sampleMask(newX, newY) < 0.5) {
-    // Bounce off the wall: change angle but do NOT update position.
-    this.angle += (Math.random() - 0.5) * Math.PI * 0.5;
-} else {
-    // Not a wall, so update the agent's position.
-    this.x = (newX + width) % width;
-    this.y = (newY + height) % height;
-}
-
+                let newX = this.x + this.dx * params.stepSize * params.speed; let newY = this.y + this.dy * params.stepSize * params.speed;
+                if (hasMask && Math.random() > sampleMask(newX, newY)) { this.angle += (Math.random() - 0.5) * Math.PI * 0.5; newX = this.x; newY = this.y; }
+                this.x = (newX + width) % width; this.y = (newY + height) % height;
                 depositAt(Math.floor(this.x), Math.floor(this.y), params.depositStrength);
 // --- NEURON FIRING LOGIC ---
                 if (params.neuronFiring && Math.random() < params.firingRate) {
@@ -354,27 +329,8 @@ if (hasMask && sampleMask(newX, newY) < 0.5) {
             externalForceField.y = new Float32Array(width * height);
             if (!hasCurvatureMap) generateCurvatureField();
             
-// --- THIS IS THE NEW, CORRECTED BLOCK ---
-agents = [];
-const centerX = width * 0.5;
-const centerY = height * 0.5;
-const radius = Math.min(width, height) * 0.3;
-
-for (let i = 0; i < params.agentCount; i++) {
-    const angle = Math.random() * Math.PI * 2;
-    const r = Math.random() * radius;
-    const x = centerX + Math.cos(angle) * r;
-    const y = centerY + Math.sin(angle) * r;
-
-    // Check if the location is valid before creating an agent there
-    if (!hasMask || sampleMask(x, y) >= 0.5) {
-        agents.push(new Agent(x, y, angle));
-    } else {
-        // If spawned in a wall, decrement 'i' to try again for this agent.
-        i--; 
-    }
-}
-
+            agents = []; const centerX = width * 0.5; const centerY = height * 0.5; const radius = Math.min(width, height) * 0.3;
+            for (let i = 0; i < params.agentCount; i++) { const angle = Math.random() * Math.PI * 2; const r = Math.random() * radius; agents.push(new Agent(centerX + Math.cos(angle) * r, centerY + Math.sin(angle) * r, angle)); }
         }
         
         function updateSimulation() {
@@ -785,8 +741,11 @@ function setupEventListeners() {
             }
             rawMaskField = new Float32Array(width * height);
             for (let y = 0; y < height; y++) { for (let x = 0; x < width; x++) { const mazeX = Math.floor(x / cellSize); const mazeY = Math.floor(y / cellSize); rawMaskField[y * width + x] = maze[mazeY]?.[mazeX] ? 1.0 : 0.0; }}
-
-
+            const tempMask = new Float32Array(width * height);
+            for (let i = 0; i < 3; i++) {
+                rawMaskField.forEach((val, idx) => tempMask[idx] = val);
+                for (let y = 1; y < height - 1; y++) { for (let x = 1; x < width - 1; x++) { let sum = 0; for (let dy = -1; dy <= 1; dy++) { for (let dx = -1; dx <= 1; dx++) { sum += tempMask[(y + dy) * width + (x + dx)]; } } rawMaskField[y * width + x] = sum / 9.0; } }
+            }
             hasMask = true; processMask(); initializeSimulation();
         }
 
@@ -797,44 +756,11 @@ function setupEventListeners() {
             reader.onload = (e) => {
                 const img = new Image();
                 img.onload = () => {
-// --- WITH THIS NEW LOGIC ---
-const keepAspect = document.getElementById('maskAspectRatioToggle').checked;
-const tempCanvas = document.createElement('canvas');
-tempCanvas.width = width;
-tempCanvas.height = height;
-const tempCtx = tempCanvas.getContext('2d');
-
-// Fill background with black (impassable) before drawing
-tempCtx.fillStyle = 'black';
-tempCtx.fillRect(0, 0, width, height);
-
-if (keepAspect) {
-    const imgAspect = img.width / img.height;
-    const canvasAspect = width / height;
-    let drawWidth, drawHeight;
-
-    if (imgAspect > canvasAspect) { // Image is wider than the canvas viewport
-        drawWidth = width;
-        drawHeight = width / imgAspect;
-    } else { // Image is taller or has the same aspect ratio
-        drawHeight = height;
-        drawWidth = height * imgAspect;
-    }
-    const x = (width - drawWidth) / 2;
-    const y = (height - drawHeight) / 2;
-    tempCtx.drawImage(img, x, y, drawWidth, drawHeight);
-} else {
-    // Original behavior: stretch image to fill the canvas
-    tempCtx.drawImage(img, 0, 0, width, height);
-}
-
-const imageData = tempCtx.getImageData(0, 0, width, height);
-const data = imageData.data;
-rawMaskField = new Float32Array(width * height);
-for (let i = 0; i < data.length; i += 4) {
-    rawMaskField[i / 4] = (data[i] + data[i + 1] + data[i + 2]) / 3 / 255.0;
-}
-// --- END OF NEW LOGIC ---
+                    const tempCanvas = document.createElement('canvas'); tempCanvas.width = width; tempCanvas.height = height;
+                    const tempCtx = tempCanvas.getContext('2d'); tempCtx.drawImage(img, 0, 0, width, height);
+                    const imageData = tempCtx.getImageData(0, 0, width, height); const data = imageData.data;
+                    rawMaskField = new Float32Array(width * height);
+                    for (let i = 0; i < data.length; i += 4) { rawMaskField[i / 4] = (data[i] + data[i + 1] + data[i + 2]) / 3 / 255.0; }
                     hasMask = true; processMask(); initializeSimulation();
                 };
                 img.src = e.target.result;
@@ -851,44 +777,11 @@ for (let i = 0; i < data.length; i += 4) {
             reader.onload = (e) => {
                 const img = new Image();
                 img.onload = () => {
-// --- WITH THIS NEW LOGIC ---
-const keepAspect = document.getElementById('curvatureAspectRatioToggle').checked;
-const tempCanvas = document.createElement('canvas');
-tempCanvas.width = width;
-tempCanvas.height = height;
-const tempCtx = tempCanvas.getContext('2d');
-
-// Fill background with medium gray (neutral curvature)
-tempCtx.fillStyle = 'rgb(128, 128, 128)';
-tempCtx.fillRect(0, 0, width, height);
-
-if (keepAspect) {
-    const imgAspect = img.width / img.height;
-    const canvasAspect = width / height;
-    let drawWidth, drawHeight;
-
-    if (imgAspect > canvasAspect) { // Image is wider
-        drawWidth = width;
-        drawHeight = width / imgAspect;
-    } else { // Image is taller
-        drawHeight = height;
-        drawWidth = height * imgAspect;
-    }
-    const x = (width - drawWidth) / 2;
-    const y = (height - drawHeight) / 2;
-    tempCtx.drawImage(img, x, y, drawWidth, drawHeight);
-} else {
-    // Original stretch-to-fill behavior
-    tempCtx.drawImage(img, 0, 0, width, height);
-}
-
-const imageData = tempCtx.getImageData(0, 0, width, height);
-const data = imageData.data;
-curvatureField = new Float32Array(width * height);
-for (let i = 0; i < data.length; i += 4) {
-    curvatureField[i / 4] = ((data[i] + data[i + 1] + data[i + 2]) / 3 / 255.0) * 2.0 - 1.0;
-}
-// --- END OF NEW LOGIC ---
+                    const tempCanvas = document.createElement('canvas'); tempCanvas.width = width; tempCanvas.height = height;
+                    const tempCtx = tempCanvas.getContext('2d'); tempCtx.drawImage(img, 0, 0, width, height);
+                    const imageData = tempCtx.getImageData(0, 0, width, height); const data = imageData.data;
+                    curvatureField = new Float32Array(width * height);
+                    for (let i = 0; i < data.length; i += 4) { curvatureField[i / 4] = ((data[i] + data[i + 1] + data[i + 2]) / 3 / 255.0) * 2.0 - 1.0; }
                     hasCurvatureMap = true; document.getElementById('curvatureToggle').checked = true; params.useCurvature = true;
                 };
                 img.src = e.target.result;
