@@ -1,0 +1,949 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Poly-Sim: Self-Organizing Networks</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #000; font-family: 'Arial', sans-serif; overflow: hidden; touch-action: none; -webkit-tap-highlight-color: transparent; }
+        canvas { display: block; cursor: crosshair; touch-action: none; }
+        .ui-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; pointer-events: none; z-index: 100; }
+        .controls { position: absolute; bottom: 20px; left: 20px; right: 20px; background: rgba(0, 0, 0, 0.95); padding: 20px; border-radius: 15px; color: white; backdrop-filter: blur(15px); border: 1px solid rgba(255, 255, 255, 0.15); transition: all 0.3s ease; pointer-events: auto; max-height: 70vh; overflow-y: auto; touch-action: auto; z-index: 100;}
+        .controls.collapsed { transform: translateY(calc(100% - 60px)); }
+        .controls-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; cursor: pointer; padding: 5px; border-radius: 8px; transition: background 0.3s ease; }
+        .controls-header:hover { background: rgba(255, 255, 255, 0.05); }
+        .controls-header h3 { margin: 0; font-size: 18px; display: flex; align-items: center; gap: 10px; }
+        .gpu-indicator { padding: 2px 8px; border-radius: 12px; font-size: 10px; font-weight: bold; }
+        .gpu-indicator.gpu-on { background: rgba(76, 175, 80, 0.3); border: 1px solid rgba(76, 175, 80, 0.5); color: #4CAF50; }
+        .gpu-indicator.gpu-off { background: rgba(255, 152, 0, 0.3); border: 1px solid rgba(255, 152, 0, 0.5); color: #FF9800; }
+        .toggle-btn { width: 30px; height: 30px; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 50%; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 16px; transition: all 0.3s ease; }
+        .header-buttons { display: flex; align-items: center; gap: 10px; pointer-events: auto; z-index: 1; }
+        .header-buttons .toggle-btn { pointer-events: auto; }
+        .toggle-btn svg { width: 18px; height: 18px; fill: white; display: block; }
+        .toggle-btn:hover { background: rgba(255, 255, 255, 0.2); transform: scale(1.05); }
+        .controls-content { transition: opacity 0.3s ease, max-height 0.3s ease; overflow: hidden; }
+        .controls.collapsed .controls-content { opacity: 0; max-height: 0; }
+        .section { margin-bottom: 20px; padding: 15px; background: rgba(255, 255, 255, 0.03); border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.05); }
+        .section-title { font-size: 14px; font-weight: bold; margin-bottom: 12px; opacity: 0.9; display: flex; align-items: center; gap: 8px; }
+        .preset-selector { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 12px; }
+        .preset-btn { padding: 10px 8px; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 8px; color: white; cursor: pointer; transition: all 0.3s ease; text-align: center; font-size: 12px; font-weight: bold; }
+        .preset-btn:hover { background: rgba(255, 255, 255, 0.15); transform: translateY(-1px); }
+        .preset-btn.active { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(100, 200, 255, 0.4); }
+        .preset-btn.physarum.active { background: rgba(100, 255, 100, 0.2); border-color: rgba(100, 255, 100, 0.4); }
+        .preset-btn.plasma.active { background: rgba(100, 150, 255, 0.2); border-color: rgba(100, 150, 255, 0.4); }
+        .preset-btn.neural.active { background: rgba(0, 255, 255, 0.2); border-color: rgba(0, 255, 255, 0.4); }
+        .preset-btn.scientific.active { background: rgba(255, 165, 0, 0.2); border-color: rgba(255, 165, 0, 0.4); }
+        .color-mode-selector { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; margin-bottom: 12px; }
+        .color-mode-btn { padding: 6px 4px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 6px; color: white; cursor: pointer; transition: all 0.3s ease; text-align: center; font-size: 10px; }
+        .color-mode-btn.active { background: rgba(255, 165, 0, 0.3); border-color: rgba(255, 165, 0, 0.5); }
+        .control-group { margin-bottom: 12px; }
+        .control-group label { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 11px; opacity: 0.9; }
+        .slider { width: 100%; height: 4px; background: rgba(255, 255, 255, 0.15); border-radius: 2px; outline: none; -webkit-appearance: none; appearance: none; }
+        .slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 16px; height: 16px; background: #fff; border-radius: 50%; cursor: pointer; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3); }
+        .slider::-moz-range-thumb { width: 16px; height: 16px; background: #fff; border-radius: 50%; cursor: pointer; border: none; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3); }
+        .checkbox-group { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+        .checkbox-group input[type="checkbox"] { width: 16px; height: 16px; }
+        .checkbox-group label { font-size: 11px; margin: 0; }
+        .button-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 12px; }
+        .button-grid.three-col { grid-template-columns: repeat(3, 1fr); }
+        .action-btn { padding: 10px 8px; border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 8px; color: white; cursor: pointer; text-align: center; font-size: 11px; font-weight: bold; transition: all 0.3s ease; text-transform: uppercase; }
+        .action-btn:hover { transform: translateY(-1px); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3); }
+        .reset-btn { background: rgba(255, 100, 100, 0.2); border-color: rgba(255, 100, 100, 0.4); }
+        .pause-btn { background: rgba(255, 200, 100, 0.2); border-color: rgba(255, 200, 100, 0.4); }
+        .maze-btn { background: rgba(150, 100, 255, 0.2); border-color: rgba(150, 100, 255, 0.4); }
+        .file-input-wrapper { position: relative; margin-bottom: 8px; }
+        .file-input { position: absolute; opacity: 0; width: 100%; height: 100%; cursor: pointer; }
+        .file-input-display { padding: 8px 12px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 6px; font-size: 10px; text-align: center; cursor: pointer; transition: all 0.3s ease; }
+        .file-input-display:hover { background: rgba(255, 255, 255, 0.1); }
+        .info-panel { position: absolute; top: 20px; left: 20px; right: 20px; background: rgba(0, 0, 0, 0.85); padding: 15px; border-radius: 10px; color: white; font-size: 12px; text-align: center; border: 1px solid rgba(255, 255, 255, 0.1); pointer-events: auto; transition: opacity 0.3s ease; }
+        .info-panel.hidden { opacity: 0; pointer-events: none; }
+        .fps-counter { position: absolute; top: 20px; right: 20px; background: rgba(0, 0, 0, 0.8); color: white; padding: 8px 12px; border-radius: 6px; font-family: monospace; font-size: 11px; pointer-events: auto; border: 1px solid rgba(255, 255, 255, 0.1); }
+        .version-info { text-align: center; padding: 12px; font-size: 10px; opacity: 0.6; border-top: 1px solid rgba(255, 255, 255, 0.1); margin-top: 15px; }
+        .version-info a { color: #64B5F6; text-decoration: none; }
+        .version-info a:hover { text-decoration: underline; }
+        #analyticsCanvas { position: fixed; bottom: 20px; right: 20px; width: 250px; height: 120px; background: rgba(0,0,0,0.85); border: 1px solid rgba(255,255,255,0.15); border-radius: 10px; pointer-events: none; opacity: 0; transition: opacity 0.3s ease; z-index: 99; }
+        #analyticsCanvas.visible { opacity: 1; pointer-events: auto; }
+        #graphToggleBtn { position: fixed; top: 60px; right: 20px; width: 35px; height: 35px; background: rgba(0,0,0,0.8); color: white; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; pointer-events: auto; z-index: 101; }
+        #graphToggleBtn svg { width: 20px; height: 20px; fill: white; }
+        @media (max-width: 600px) {
+            .controls { left: 10px; right: 10px; bottom: 10px; padding: 15px; }
+            .info-panel { left: 10px; right: 10px; top: 10px; }
+            .preset-selector, .color-mode-selector { grid-template-columns: repeat(2, 1fr); }
+            #analyticsCanvas { left: 10px; right: 10px; width: auto; }
+        }
+        @media (orientation: landscape) and (max-height: 500px) {
+            .controls { max-height: 80vh; left: 10px; right: 300px; }
+            .fps-counter { right: 10px; }
+            #graphToggleBtn { right: 10px; }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    
+    <canvas id="analyticsCanvas"></canvas>
+    <div id="graphToggleBtn" title="Toggle Analytics Graph">
+        <svg viewBox="0 0 24 24"><path d="M16 11.76l-1.41-1.41-2.59 2.59V3h-2v10l-2.59-2.58L6 11.75 12 17.75l4-6zM4 19h16v2H4z"></path></svg>
+    </div>
+
+    <div class="ui-overlay">
+        <div class="controls" id="controls">
+            <div class="controls-header" id="controlsHeader">
+                <h3>Poly-Sim <span class="gpu-indicator" id="gpuIndicator">CPU</span></h3>
+                <div class="header-buttons">
+                    <div class="toggle-btn" id="fullscreenBtn"></div>
+                    <div class="toggle-btn" id="toggleBtn">▼</div>
+                </div>
+            </div>
+            
+            <div class="controls-content">
+                <div class="section">
+                    <div class="section-title">Simulation Mode</div>
+                    <div class="preset-selector">
+                        <div class="preset-btn physarum active" data-preset="physarum">Physarum</div>
+                        <div class="preset-btn plasma" data-preset="plasma">Plasma</div>
+                        <div class="preset-btn neural" data-preset="neural">Neural</div>
+                        <div class="preset-btn scientific" data-preset="scientific">Scientific</div>
+                    </div>
+                    <div class="color-mode-selector">
+                        <div class="color-mode-btn active" data-mode="natural">Natural</div>
+                        <div class="color-mode-btn" data-mode="scientific">Analysis</div>
+                        <div class="color-mode-btn" data-mode="thermal">Thermal</div>
+                        <div class="color-mode-btn" data-mode="neon">Neon</div>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <div class="section-title">Interaction Tools</div>
+                    <p style="font-size: 10px; opacity: 0.7; margin-bottom: 10px;">Select a tool to use on the canvas.</p>
+                    <div class="button-grid three-col">
+                        <div class="action-btn" id="tool-spawn" onclick="setBrushMode('spawn')">Spawn Agents</div>
+                        <div class="action-btn" id="tool-source" onclick="setBrushMode('source')">Place Source</div>
+                        <div class="action-btn" id="tool-sink" onclick="setBrushMode('sink')">Place Sink</div>
+                    </div>
+                    <div class="button-grid" style="margin-top: 8px;">
+                        <div class="action-btn reset-btn" onclick="clearSourcesAndSinks()">Clear Sources/Sinks</div>
+                    </div>
+                </div>
+                
+                <div class="section">
+                    <div class="section-title">Environment</div>
+                    <div class="checkbox-group" style="margin-bottom: 15px;"><input type="checkbox" id="hardBoundariesToggle"><label for="hardBoundariesToggle">Use Hard Boundaries</label></div>
+                    <div class="file-input-wrapper"><input type="file" class="file-input" id="maskInput" accept="image/*"><div class="file-input-display">Load Environment Mask</div></div>
+
+
+<div class="checkbox-group" style="justify-content: center; margin-bottom: 10px;">
+    <input type="checkbox" id="maskAspectRatioToggle" checked>
+    <label for="maskAspectRatioToggle">Keep Image Aspect Ratio</label>
+</div>
+                    <div class="button-grid three-col"><div class="action-btn maze-btn" onclick="generateMaze()">Gen Maze</div><div class="action-btn maze-btn" onclick="clearMask()">Clear</div><div class="action-btn maze-btn" onclick="invertMask()">Invert</div></div>
+                </div>
+                
+                <div class="section">
+                    <div class="section-title">Dynamic Environment</div>
+                     <div class="checkbox-group"><input type="checkbox" id="animateSourcesToggle"><label for="animateSourcesToggle">Animate Sources & Sinks</label></div>
+                     <div class="checkbox-group"><input type="checkbox" id="animateMaskToggle"><label for="animateMaskToggle">Animate (Shift) Mask</label></div>
+                </div>
+
+                <div class="section">
+                    <div class="section-title">Visualizations & Forces</div>
+                    <div class="checkbox-group"><input type="checkbox" id="flowFieldToggle"><label for="flowFieldToggle">Show Flow Vector Field</label></div>
+                    <div class="control-group">
+                        <label>Global Flow X (Wind) <span id="globalFlowXValue">0.0</span></label>
+                        <input type="range" class="slider" id="globalFlowX" min="-1.0" max="1.0" value="0.0" step="0.1">
+                    </div>
+                    <div class="control-group">
+                        <label>Global Flow Y (Wind) <span id="globalFlowYValue">0.0</span></label>
+                        <input type="range" class="slider" id="globalFlowY" min="-1.0" max="1.0" value="0.0" step="0.1">
+                    </div>
+                </div>
+
+                <div class="section">
+                    <div class="section-title">Geometric Criticality</div>
+                    <div class="file-input-wrapper"><input type="file" class="file-input" id="curvatureMapInput" accept="image/*"><div class="file-input-display">Load Curvature Map</div></div>
+
+<!-- ADD THIS BLOCK -->
+<div class="checkbox-group" style="justify-content: center; margin-bottom: 10px;">
+    <input type="checkbox" id="curvatureAspectRatioToggle" checked>
+    <label for="curvatureAspectRatioToggle">Keep Image Aspect Ratio</label>
+</div>
+<!-- END OF BLOCK TO ADD -->
+                    
+                    <div class="button-grid" style="margin-top: -4px; margin-bottom: 10px;"><div class="action-btn maze-btn" onclick="clearCurvatureMap()">Clear Map</div></div>
+                    <div class="checkbox-group"><input type="checkbox" id="curvatureToggle"><label for="curvatureToggle">Enable Curvature Field</label></div>
+                    <div class="control-group"><label>Curvature Strength <span id="curvatureStrengthValue">0.5</span></label><input type="range" class="slider" id="curvatureStrength" min="0.1" max="2.0" value="0.5" step="0.1"></div>
+                    <div class="button-grid"><div class="action-btn maze-btn" onclick="setWormholeMode(true)">Place Wormholes</div><div class="action-btn maze-btn" onclick="clearWormholes()">Clear Wormholes</div></div>
+                </div>
+                
+                <div class="section">
+                    <div class="section-title">Performance & Free Energy</div>
+                    <div class="checkbox-group"><input type="checkbox" id="gpuToggle"><label for="gpuToggle">GPU Acceleration <span id="gpuStatus">(Checking...)</span></label></div>
+                    <div class="control-group"><label>Network Efficiency <span id="efficiencyValue">0.00</span></label></div>
+                    <div class="control-group"><label>Agent Count <span id="agentCountValue">50000</span></label><input type="range" class="slider" id="agentCount" min="5000" max="100000" value="50000" step="5000"></div>
+                </div>
+                
+                <div class="section">
+                    <div class="section-title">Feedback Loop (R-D)</div>
+                    <div class="control-group"><label>Sensor Angle <span id="sensorAngleValue">22.5°</span></label><input type="range" class="slider" id="sensorAngle" min="5" max="90" value="22.5" step="2.5"></div>
+                    <div class="control-group"><label>Decay Rate <span id="decayRateValue">0.980</span></label><input type="range" class="slider" id="decayRate" min="0.900" max="0.999" value="0.980" step="0.001"></div>
+                    <div class="control-group"><label>Deposit Strength <span id="depositStrengthValue">0.10</span></label><input type="range" class="slider" id="depositStrength" min="0.01" max="0.5" value="0.10" step="0.01"></div>
+                    <div class="control-group"><label>Speed <span id="speedValue">1.0</span></label><input type="range" class="slider" id="speed" min="0.1" max="5.0" value="1.0" step="0.1"></div>
+                </div>
+
+            <div class="section">
+                    <div class="section-title">Neural Features</div>
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="neuronFiring">
+                        <label for="neuronFiring">Simulate Neuron Firing</label>
+                    </div>
+                    <div class="control-group">
+                        <label>Firing Rate <span id="firingRateValue">0.020</span></label>
+                        <input type="range" class="slider" id="firingRate" min="0.001" max="0.1" value="0.02" step="0.001">
+                    </div>
+                </div>                
+
+                <div class="button-grid"><div class="action-btn reset-btn" onclick="resetSimulation()">Reset</div><div class="action-btn pause-btn" onclick="togglePause()">Pause</div></div>
+                
+                <div class="version-info"><a href="https://github.io/sandner-art/Poly-Sim" target="_blank">Poly-Sim</a> v1.0.0<br>© Daniel Sandner • <a href="https://sandner.art" target="_blank">sandner.art</a></div>
+            </div>
+        </div>
+        <div class="fps-counter" id="fpsCounter">60 FPS</div>
+        <div class="info-panel" id="infoPanel"><strong>Welcome to Poly-Sim v1.0!</strong><br>Explore new visualization and dynamic environment features.<br><small>Tap here to hide • Tap controls to collapse</small></div>
+    </div>
+
+    <script>
+        // --- GLOBAL VARIABLES ---
+        let canvas, gl, ctx;
+        let graphCanvas, graphCtx;
+        let width, height;
+        let animationId;
+        let isPaused = false;
+        let useGPU = false;
+        let currentColorMode = 'natural';
+        
+        let agents = [];
+        let conductivityField = [], tempField = [];
+        let maskField = [], rawMaskField = [];
+        let firingField = [];
+        let curvatureField = [];
+        let wormholes = [];
+        let externalForceField = { x: [], y: [] };
+
+        let sources = [], sinks = [];
+        let flowFieldX = [], flowFieldY = [];
+
+        let hasMask = false, hasCurvatureMap = false;
+        let useHardBoundaries = false;
+        let brushMode = 'spawn';
+        let wormholePlacingMode = false, tempWormhole = null;
+        let isGraphVisible = false;
+        let isFlowVisible = false;
+        let globalFlow = { x: 0, y: 0 };
+        let dynamicEnv = { animateSources: false, animateMask: false };
+        let maskOffset = { x: 0, y: 0 };
+
+        let gpuSupported = false;
+        
+        let frameCount = 0, lastTime = 0, fps = 60;
+        let lastEfficiencyUpdateTime = 0;
+        let lastAnalyticsTime = 0;
+        let analyticsData = { efficiency: [], conductivity: [], agents: [] };
+        
+        let params = {
+            agentCount: 50000, sensorAngle: 22.5 * Math.PI / 180, sensorDistance: 9.0, stepSize: 1.0, decayRate: 0.980,
+            depositStrength: 0.10, speed: 1.0, diffusionRate: 0.1, neuronFiring: false, firingRate: 0.02, useCurvature: false, curvatureStrength: 0.5
+        };
+        const presets = {
+            physarum: { agentCount: 50000, sensorAngle: 22.5 * Math.PI / 180, decayRate: 0.980, depositStrength: 0.10, speed: 1.0, diffusionRate: 0.3 },
+            plasma: { agentCount: 80000, sensorAngle: 45 * Math.PI / 180, decayRate: 0.950, depositStrength: 0.20, speed: 2.5, diffusionRate: 0.1 },
+            neural: { agentCount: 30000, sensorAngle: 30 * Math.PI / 180, decayRate: 0.995, depositStrength: 0.05, speed: 0.8, diffusionRate: 0.05 },
+            scientific: { agentCount: 60000, sensorAngle: 35 * Math.PI / 180, decayRate: 0.985, depositStrength: 0.15, speed: 1.2, diffusionRate: 0.2 }
+        };
+        let currentPreset = 'physarum';
+        const colorModes = { natural: { physarum: { color1: [0.05, 0.02, 0.0], color2: [0.4, 0.8, 0.2], color3: [0.9, 0.9, 0.4] }, plasma: { color1: [0.0, 0.0, 0.1], color2: [0.3, 0.1, 0.8], color3: [0.9, 0.7, 1.0] }, neural: { color1: [0.0, 0.05, 0.1], color2: [0.0, 0.4, 0.8], color3: [0.3, 0.8, 1.0] }, scientific: { color1: [0.1, 0.1, 0.1], color2: [0.8, 0.4, 0.0], color3: [1.0, 0.8, 0.2] } }, scientific: { physarum: { color1: [0.0, 0.0, 0.2], color2: [0.0, 0.8, 0.8], color3: [1.0, 1.0, 0.0] }, plasma: { color1: [0.2, 0.0, 0.0], color2: [0.8, 0.0, 0.8], color3: [1.0, 0.5, 0.0] }, neural: { color1: [0.0, 0.0, 0.0], color2: [0.0, 1.0, 0.0], color3: [1.0, 0.0, 0.0] }, scientific: { color1: [0.0, 0.0, 0.0], color2: [0.5, 0.5, 0.5], color3: [1.0, 1.0, 1.0] } }, thermal: { physarum: { color1: [0.0, 0.0, 0.2], color2: [0.8, 0.0, 0.0], color3: [1.0, 1.0, 0.0] }, plasma: { color1: [0.0, 0.0, 0.0], color2: [0.5, 0.0, 0.5], color3: [1.0, 0.0, 1.0] }, neural: { color1: [0.0, 0.0, 0.4], color2: [0.0, 0.5, 1.0], color3: [1.0, 1.0, 1.0] }, scientific: { color1: [0.0, 0.0, 0.5], color2: [1.0, 0.5, 0.0], color3: [1.0, 1.0, 0.5] } }, neon: { physarum: { color1: [0.1, 0.0, 0.1], color2: [0.0, 1.0, 0.5], color3: [0.5, 1.0, 1.0] }, plasma: { color1: [0.1, 0.0, 0.2], color2: [1.0, 0.0, 1.0], color3: [0.0, 1.0, 1.0] }, neural: { color1: [0.0, 0.1, 0.2], color2: [0.0, 1.0, 0.0], color3: [1.0, 1.0, 0.0] }, scientific: { color1: [0.2, 0.0, 0.2], color2: [1.0, 0.0, 0.0], color3: [0.0, 0.0, 1.0] } } };
+        
+        class Agent {
+            constructor(x, y, angle) {
+                this.x = x || Math.random() * width; this.y = y || Math.random() * height;
+                this.angle = angle || Math.random() * Math.PI * 2; this.dx = Math.cos(this.angle); this.dy = Math.sin(this.angle);
+            }
+            update() {
+                for (const pair of wormholes) { for (let i = 0; i < 2; i++) { const w = pair[i]; if (Math.sqrt((this.x - w.x)**2 + (this.y - w.y)**2) < w.radius) { const otherW = pair[1-i]; this.x = otherW.x; this.y = otherW.y; this.angle += (Math.random() - 0.5) * 0.2; break; } } }
+                const sensorDist = params.sensorDistance; const sensorAngle = params.sensorAngle;
+                const leftVal = sampleConductivity(this.x + Math.cos(this.angle - sensorAngle) * sensorDist, this.y + Math.sin(this.angle - sensorAngle) * sensorDist);
+                const rightVal = sampleConductivity(this.x + Math.cos(this.angle + sensorAngle) * sensorDist, this.y + Math.sin(this.angle + sensorAngle) * sensorDist);
+                const centerVal = sampleConductivity(this.x + Math.cos(this.angle) * sensorDist, this.y + Math.sin(this.angle) * sensorDist);
+                let steerAngle = 0;
+                if (centerVal > leftVal && centerVal > rightVal) { steerAngle = 0; } else if (leftVal > rightVal) { steerAngle = -sensorAngle * 0.1; } else if (rightVal > leftVal) { steerAngle = sensorAngle * 0.1; } else { steerAngle = (Math.random() - 0.5) * sensorAngle * 0.2; }
+                this.angle += steerAngle;
+                // Apply external force (vortex)
+                const ix = Math.floor(this.x);
+                const iy = Math.floor(this.y);
+                if (ix >= 0 && ix < width && iy >= 0 && iy < height) {
+                    const forceIndex = iy * width + ix;
+                    const forceX = externalForceField.x[forceIndex] || 0;
+                    const forceY = externalForceField.y[forceIndex] || 0;
+                    if (forceX !== 0 || forceY !== 0) {
+                        const forceAngle = Math.atan2(forceY, forceX);
+                        this.angle = this.angle * 0.95 + forceAngle * 0.05;
+                    }
+                }
+                if (params.useCurvature) { const grad = sampleCurvatureGradient(this.x, this.y); this.angle += params.curvatureStrength * (this.dx * grad.y - this.dy * grad.x) * 0.1; }
+                this.dx = Math.cos(this.angle); this.dy = Math.sin(this.angle);
+                if (globalFlow.x !== 0 || globalFlow.y !== 0) {
+                    this.dx = this.dx * 0.95 + globalFlow.x * 0.05; this.dy = this.dy * 0.95 + globalFlow.y * 0.05;
+                    const speed = Math.sqrt(this.dx*this.dx + this.dy*this.dy); if(speed > 0){ this.dx /= speed; this.dy /= speed; }
+                    this.angle = Math.atan2(this.dy, this.dx);
+                }
+
+let newX = this.x + this.dx * params.stepSize * params.speed;
+let newY = this.y + this.dy * params.stepSize * params.speed;
+
+// Hard boundary check: if mask value is less than 0.5, it's a wall.
+if (hasMask && sampleMask(newX, newY) < 0.5) {
+    // Bounce off the wall: change angle but do NOT update position.
+    this.angle += (Math.random() - 0.5) * Math.PI * 0.5;
+} else {
+    // Not a wall, so update the agent's position.
+    this.x = (newX + width) % width;
+    this.y = (newY + height) % height;
+}
+
+                depositAt(Math.floor(this.x), Math.floor(this.y), params.depositStrength);
+// --- NEURON FIRING LOGIC ---
+                if (params.neuronFiring && Math.random() < params.firingRate) {
+                    const fireRadius = 5;
+                    for (let dy = -fireRadius; dy <= fireRadius; dy++) {
+                        for (let dx = -fireRadius; dx <= fireRadius; dx++) {
+                            const dist = Math.sqrt(dx*dx + dy*dy);
+                            if (dist <= fireRadius) {
+                                const fx = Math.floor(this.x + dx);
+                                const fy = Math.floor(this.y + dy);
+                                if (fx >= 0 && fx < width && fy >= 0 && fy < height) {
+                                    const index = fy * width + fx;
+                                    const strength = (1 - dist / fireRadius) * 0.3;
+                                    firingField[index] = Math.min(1.0, (firingField[index] || 0) + strength);
+                                }
+                            }
+                        }
+                    }
+                }                
+                if (isFlowVisible) {
+                    const ix = Math.floor(this.x); const iy = Math.floor(this.y);
+                    if (ix >= 0 && ix < width && iy >= 0 && iy < height) { const index = iy * width + ix; flowFieldX[index] += this.dx; flowFieldY[index] += this.dy; }
+                }
+            }
+        }
+        
+        function sampleConductivity(x, y) { x = Math.floor((x + width) % width); y = Math.floor((y + height) % height); if (x < 0 || x >= width || y < 0 || y >= height) return 0; return conductivityField[y * width + x] || 0; }
+        function sampleMask(x, y) { if (!hasMask) return 1.0; const ix = Math.floor((x + maskOffset.x + width) % width); const iy = Math.floor((y + maskOffset.y + height) % height); if (ix < 0 || ix >= width || iy < 0 || iy >= height) return 0.0; return maskField[iy * width + ix]; }
+        function sampleCurvatureGradient(x, y) { x = Math.floor((x + width) % width); y = Math.floor((y + height) % height); const C = (v, max) => Math.max(0, Math.min(max - 1, v)); const x1 = C(x - 1, width), x2 = C(x + 1, width); const y1 = C(y - 1, height), y2 = C(y + 1, height); return { x: (curvatureField[y * width + x2] - curvatureField[y * width + x1]) / 2.0, y: (curvatureField[y2 * width + x] - curvatureField[y1 * width + x]) / 2.0 }; }
+        function depositAt(x, y, strength) { if (x < 0 || x >= width || y < 0 || y >= height) return; const index = y * width + x; conductivityField[index] = Math.min(1.0, (conductivityField[index] || 0) + strength); }
+
+        function initializeSimulation() {
+            const dpr = window.devicePixelRatio || 1; const rect = canvas.getBoundingClientRect();
+            let baseWidth = Math.min(rect.width * dpr, 1200); let baseHeight = Math.min(rect.height * dpr, 800);
+            if (window.innerWidth < 768) { baseWidth = Math.min(baseWidth, 600); baseHeight = Math.min(baseHeight, 400); }
+            const aspectRatio = rect.width / rect.height; if (aspectRatio > 1) { baseHeight = Math.floor(baseWidth / aspectRatio); } else { baseWidth = Math.floor(baseHeight * aspectRatio); }
+            width = Math.max(1, baseWidth); height = Math.max(1, baseHeight);
+            
+            conductivityField = new Float32Array(width * height); tempField = new Float32Array(width * height); firingField = new Float32Array(width * height);
+            flowFieldX = new Float32Array(width * height); flowFieldY = new Float32Array(width * height);
+            externalForceField.x = new Float32Array(width * height);
+            externalForceField.y = new Float32Array(width * height);
+            if (!hasCurvatureMap) generateCurvatureField();
+            
+// --- THIS IS THE NEW, CORRECTED BLOCK ---
+agents = [];
+const centerX = width * 0.5;
+const centerY = height * 0.5;
+const radius = Math.min(width, height) * 0.3;
+
+for (let i = 0; i < params.agentCount; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const r = Math.random() * radius;
+    const x = centerX + Math.cos(angle) * r;
+    const y = centerY + Math.sin(angle) * r;
+
+    // Check if the location is valid before creating an agent there
+    if (!hasMask || sampleMask(x, y) >= 0.5) {
+        agents.push(new Agent(x, y, angle));
+    } else {
+        // If spawned in a wall, decrement 'i' to try again for this agent.
+        i--; 
+    }
+}
+
+        }
+        
+        function updateSimulation() {
+            if (isPaused) return;
+            handleSources();
+            
+            if (dynamicEnv.animateSources) {
+                const time = Date.now() * 0.0002;
+                sources.forEach((s, i) => { s.x += Math.sin(time + i) * 0.5; s.y += Math.cos(time - i) * 0.5; });
+                sinks.forEach((s, i) => { s.x += Math.cos(time + i * 2) * 0.4; s.y += Math.sin(time - i * 2) * 0.4; });
+            }
+            if (dynamicEnv.animateMask && hasMask) {
+                maskOffset.x = (maskOffset.x + 0.5) % width;
+                maskOffset.y = (maskOffset.y + 0.25) % height;
+            }
+
+            const survivingAgents = []; for (const agent of agents) { agent.update(); if (!handleSinks(agent)) { survivingAgents.push(agent); } }
+            agents = survivingAgents;
+            
+            for (let i = 0; i < conductivityField.length; i++) { conductivityField[i] *= params.decayRate; }
+            if (params.neuronFiring) {
+                for (let i = 0; i < firingField.length; i++) {
+                    firingField[i] *= 0.95; 
+                }
+            }
+            if (isFlowVisible) { for (let i = 0; i < flowFieldX.length; i++) { flowFieldX[i] *= 0.95; flowFieldY[i] *= 0.95; } }
+            applyDiffusion();
+        }
+
+        function applyDiffusion() {
+            const diffusion = presets[currentPreset].diffusionRate; if (diffusion === 0) return;
+            for (let y = 1; y < height - 1; y++) { for (let x = 1; x < width - 1; x++) { const i = y * width + x; let sum = 0; sum += conductivityField[i - width] * 0.2; sum += conductivityField[i - 1] * 0.2; sum += conductivityField[i] * 0.2; sum += conductivityField[i + 1] * 0.2; sum += conductivityField[i + width] * 0.2; tempField[i] = conductivityField[i] * (1 - diffusion) + sum * diffusion; } }
+            [conductivityField, tempField] = [tempField, conductivityField];
+            for (let i = 0; i < externalForceField.x.length; i++) {
+                externalForceField.x[i] *= 0.9;
+                externalForceField.y[i] *= 0.9;
+            }
+        }
+
+        function renderSimulation() {
+            if (!canvas || !canvas.getContext) return;
+            const ctx = canvas.getContext('2d'); const imageData = ctx.createImageData(width, height); const data = imageData.data;
+            const colors = colorModes[currentColorMode][currentPreset];
+            for (let i = 0; i < conductivityField.length; i++) {
+                let intensity = Math.pow(Math.min(1, conductivityField[i]), 0.5); if (params.neuronFiring && firingField[i] > 0) { intensity = Math.min(1, intensity + firingField[i] * 0.5); }
+                let r, g, b; if (intensity < 0.5) { const t = intensity * 2; r = colors.color1[0] * (1 - t) + colors.color2[0] * t; g = colors.color1[1] * (1 - t) + colors.color2[1] * t; b = colors.color1[2] * (1 - t) + colors.color2[2] * t; } else { const t = (intensity - 0.5) * 2; r = colors.color2[0] * (1 - t) + colors.color3[0] * t; g = colors.color2[1] * (1 - t) + colors.color3[1] * t; b = colors.color2[2] * (1 - t) + colors.color3[2] * t; }
+                const pixelIndex = i * 4; data[pixelIndex] = r * 255; data[pixelIndex + 1] = g * 255; data[pixelIndex + 2] = b * 255; data[pixelIndex + 3] = 255;
+            }
+            const tempCanvas = document.createElement('canvas'); tempCanvas.width = width; tempCanvas.height = height; const tempCtx = tempCanvas.getContext('2d'); tempCtx.putImageData(imageData, 0, 0);
+            ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.imageSmoothingEnabled = false; ctx.drawImage(tempCanvas, 0, 0, canvas.width, canvas.height);
+            
+            if (isFlowVisible) renderFlowField();
+            
+            ctx.lineWidth = 2;
+            sources.forEach(s => { ctx.beginPath(); ctx.arc(s.x / width * canvas.width, s.y / height * canvas.height, 10, 0, 2*Math.PI); ctx.strokeStyle = '#00FFFF'; ctx.stroke(); });
+            sinks.forEach(s => { ctx.beginPath(); ctx.arc(s.x / width * canvas.width, s.y / height * canvas.height, s.radius/height*canvas.height, 0, 2*Math.PI); ctx.strokeStyle = '#FF0055'; ctx.stroke(); });
+        }
+
+        function renderFlowField() {
+            ctx.strokeStyle = "rgba(255, 255, 255, 0.5)"; ctx.lineWidth = 1;
+            const gridSize = 20; const scale = 15;
+            for (let y = 0; y < canvas.height; y += gridSize) { for (let x = 0; x < canvas.width; x += gridSize) {
+                const simX = Math.floor(x / canvas.width * width); const simY = Math.floor(y / canvas.height * height);
+                const index = simY * width + simX;
+                const vx = flowFieldX[index]; const vy = flowFieldY[index];
+                const mag = Math.sqrt(vx*vx + vy*vy);
+                if (mag > 0.01) {
+                    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + vx * scale, y + vy * scale); ctx.stroke();
+                }
+            }}
+        }
+        
+        function drawAnalyticsGraph() {
+            graphCtx.clearRect(0, 0, graphCanvas.width, graphCanvas.height);
+            const datasets = [ { data: analyticsData.efficiency, color: "#00FFFF", label: "Efficiency" }, { data: analyticsData.conductivity, color: "#FFAA00", label: "Conductivity" }, { data: analyticsData.agents, color: "#FF00FF", label: "Agents" } ];
+            datasets.forEach((set, i) => {
+                const data = set.data; if (data.length < 2) return;
+                let maxVal = 0; for(const val of data) { if(val > maxVal) maxVal = val; } if (maxVal === 0) maxVal = 1;
+                graphCtx.beginPath(); graphCtx.strokeStyle = set.color; graphCtx.lineWidth = 1.5;
+                for (let j = 0; j < data.length; j++) {
+                    const x = (j / (data.length - 1)) * graphCanvas.width;
+                    const y = graphCanvas.height - (data[j] / maxVal) * (graphCanvas.height - 10);
+                    if (j === 0) { graphCtx.moveTo(x, y); } else { graphCtx.lineTo(x, y); }
+                }
+                graphCtx.stroke();
+                graphCtx.fillStyle = set.color; graphCtx.font = "10px monospace"; graphCtx.fillText(set.label, 5, 12 * (i + 1));
+            });
+        }
+        
+        function animate(currentTime) {
+            frameCount++; if (currentTime - lastTime >= 1000) { fps = Math.round(frameCount * 1000 / (currentTime - lastTime)); document.getElementById('fpsCounter').textContent = fps + ' FPS'; frameCount = 0; lastTime = currentTime; }
+            if (currentTime - lastEfficiencyUpdateTime > 500) { calculateEfficiency(); lastEfficiencyUpdateTime = currentTime; }
+            
+            if (isGraphVisible && currentTime - lastAnalyticsTime > 500) {
+                const totalConductivity = conductivityField.reduce((a, b) => a + b, 0);
+                analyticsData.efficiency.push(parseFloat(document.getElementById('efficiencyValue').textContent));
+                analyticsData.conductivity.push(totalConductivity / (width*height));
+                analyticsData.agents.push(agents.length / params.agentCount);
+                if(analyticsData.efficiency.length > 100) { analyticsData.efficiency.shift(); analyticsData.conductivity.shift(); analyticsData.agents.shift(); }
+                lastAnalyticsTime = currentTime;
+            }
+
+            updateSimulation(); renderSimulation();
+            if (isGraphVisible) drawAnalyticsGraph();
+            
+            animationId = requestAnimationFrame(animate);
+        }
+
+        function applyVortex(screenX, screenY, strength, radius) {
+            const rect = canvas.getBoundingClientRect();
+            const simX = (screenX - rect.left) / canvas.width * width;
+            const simY = (screenY - rect.top) / canvas.height * height;
+
+            const startX = Math.max(0, Math.floor(simX - radius));
+            const endX = Math.min(width, Math.floor(simX + radius));
+            const startY = Math.max(0, Math.floor(simY - radius));
+            const endY = Math.min(height, Math.floor(simY + radius));
+
+            for(let y = startY; y < endY; y++){
+                for(let x = startX; x < endX; x++){
+                    const dx = x - simX;
+                    const dy = y - simY;
+                    const dist = Math.sqrt(dx*dx + dy*dy);
+                    if (dist < radius) {
+                        const force = (1 - dist / radius) * strength;
+                        const index = y * width + x;
+                        // Perpendicular vector for rotation
+                        externalForceField.x[index] -= dy * force * 0.1;
+                        externalForceField.y[index] += dx * force * 0.1;
+                    }
+                }
+            }
+        }
+
+        function init() {
+            canvas = document.getElementById('canvas'); ctx = canvas.getContext('2d');
+            graphCanvas = document.getElementById('analyticsCanvas'); graphCtx = graphCanvas.getContext('2d');
+            canvas.style.position = 'fixed'; canvas.style.top = '0'; canvas.style.left = '0'; canvas.style.width = '100vw'; canvas.style.height = '100vh';
+            checkGPUSupport(); resize(); setupEventListeners(); animate(0);
+            setTimeout(() => { document.getElementById('infoPanel').classList.add('hidden'); }, 5000);
+        }
+        
+        function resize() {
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width; canvas.height = rect.height;
+            initializeSimulation();
+        }
+
+function setupEventListeners() {
+            window.addEventListener('resize', resize);
+            let isDrawing = false;
+            let activeTouches = new Map();
+            let lastTouchEnd = 0;
+
+            function isEventOnUI(event) {
+                return event.target.closest && (event.target.closest('.controls') || event.target.closest('#fpsCounter') || event.target.closest('#graphToggleBtn'));
+            }
+
+            // Mouse Events (unchanged)
+            canvas.addEventListener('mousedown', (e) => { if (isEventOnUI(e)) return; e.preventDefault(); isDrawing = true; startDrawing(e.clientX, e.clientY); });
+            document.addEventListener('mousemove', (e) => { if (isDrawing) spawnAgentsAt(e.clientX, e.clientY); });
+            document.addEventListener('mouseup', () => { isDrawing = false; });
+            document.addEventListener('mouseleave', () => { isDrawing = false; });
+            
+            // --- TOUCH EVENTS ---
+            document.addEventListener('touchstart', (e) => {
+                if (isEventOnUI(e)) return;
+
+                // Prevent default for all canvas touches
+                e.preventDefault();
+
+                // Update active touches
+                for (let touch of e.changedTouches) {
+                    activeTouches.set(touch.identifier, {x: touch.clientX, y: touch.clientY});
+                }
+
+                // --- VORTEX GESTURE INITIALIZATION ---
+                if (activeTouches.size === 2) {
+                    isDrawing = false; // Stop single-finger drawing
+                    const touches = Array.from(activeTouches.values());
+                    // Calculate the initial angle and store it as lastAngle
+                    const initialAngle = Math.atan2(touches[1].y - touches[0].y, touches[1].x - touches[0].x);
+                    for (let touch of activeTouches.values()) {
+                        touch.lastAngle = initialAngle;
+                    }
+                } else if (activeTouches.size === 1) {
+                    isDrawing = true;
+                    startDrawing(Array.from(activeTouches.values())[0].x, Array.from(activeTouches.values())[0].y);
+                }
+
+            }, { passive: false });
+
+            document.addEventListener('touchmove', (e) => {
+                // Do nothing if touch is on UI OR if no canvas gesture is active
+                if (isEventOnUI(e) || activeTouches.size === 0) return;
+                
+                e.preventDefault();
+
+                // Update touch positions
+                for (let touch of e.changedTouches) {
+                    if (activeTouches.has(touch.identifier)) {
+                        const oldTouch = activeTouches.get(touch.identifier);
+                        activeTouches.set(touch.identifier, {...oldTouch, x: touch.clientX, y: touch.clientY});
+                    }
+                }
+                
+                if (isDrawing && activeTouches.size === 1 && brushMode === 'spawn') {
+                    spawnAgentsAt(Array.from(activeTouches.values())[0].x, Array.from(activeTouches.values())[0].y);
+                } 
+                // --- CORRECT VORTEX LOGIC ---
+                else if (activeTouches.size === 2) {
+                    const touches = Array.from(activeTouches.values());
+                    const t1 = touches[0];
+                    const t2 = touches[1];
+
+                    // 1. Get the angle from the previous frame (it's the same for both touches)
+                    const lastAngle = t1.lastAngle;
+
+                    // 2. Calculate the current angle
+                    const currentAngle = Math.atan2(t2.y - t1.y, t2.x - t1.x);
+
+                    // 3. Find the difference from the last frame
+                    const angleDiff = currentAngle - lastAngle;
+
+                    // 4. If there was a change, apply the vortex
+                    if (Math.abs(angleDiff) > 0.01) { // Small threshold for stability
+                        const centerX = (t1.x + t2.x) / 2;
+                        const centerY = (t1.y + t2.y) / 2;
+                        // Strength is proportional to the rotational speed
+                        applyVortex(centerX, centerY, angleDiff * 5.0, 100);
+                    }
+
+                    // 5. CRITICAL: Update lastAngle for the next frame
+                    for (let touch of activeTouches.values()) {
+                        touch.lastAngle = currentAngle;
+                    }
+                }
+            }, { passive: false });
+
+            document.addEventListener('touchend', (e) => {
+                if (!isEventOnUI(e)) {
+                    const now = (new Date()).getTime();
+                    if (now - lastTouchEnd <= 300) e.preventDefault();
+                    lastTouchEnd = now;
+                }
+
+                for(let touch of e.changedTouches) {
+                    activeTouches.delete(touch.identifier);
+                }
+                
+                // If we are back to one finger, resume drawing. Otherwise, stop all actions.
+                if (activeTouches.size === 1) {
+                    isDrawing = true;
+                } else {
+                    isDrawing = false;
+                }
+            });
+
+            setupControlListeners();
+        }
+        
+        function setupControlListeners() {
+            document.getElementById('controlsHeader').addEventListener('click', (e) => { if (!e.target.closest('.header-buttons')) toggleControls(); });
+            document.getElementById('toggleBtn').addEventListener('click', toggleControls);
+            document.getElementById('fullscreenBtn').addEventListener('click', toggleFullscreen);
+            document.addEventListener('fullscreenchange', updateFullscreenIcon);
+            document.addEventListener('webkitfullscreenchange', updateFullscreenIcon);
+            document.querySelectorAll('.preset-btn').forEach(btn => btn.addEventListener('click', () => setPreset(btn.dataset.preset)));
+            document.querySelectorAll('.color-mode-btn').forEach(btn => btn.addEventListener('click', () => setColorMode(btn.dataset.mode)));
+            document.getElementById('gpuToggle').addEventListener('change', (e) => {
+                useGPU = e.target.checked && gpuSupported;
+                const gpuIndicator = document.getElementById('gpuIndicator');
+                gpuIndicator.textContent = useGPU ? 'GPU' : 'CPU';
+                gpuIndicator.className = useGPU ? 'gpu-indicator gpu-on' : 'gpu-indicator gpu-off';
+            });
+            document.getElementById('hardBoundariesToggle').addEventListener('change', (e) => { useHardBoundaries = e.target.checked; if (hasMask) { processMask(); initializeSimulation(); } });
+            document.getElementById('neuronFiring').addEventListener('change', (e) => params.neuronFiring = e.target.checked);
+            document.getElementById('curvatureToggle').addEventListener('change', (e) => params.useCurvature = e.target.checked);
+            document.getElementById('neuronFiring').addEventListener('change', (e) => params.neuronFiring = e.target.checked);
+            document.getElementById('firingRate').addEventListener('input', (e) => {
+                params.firingRate = parseFloat(e.target.value);
+                updateSliderDisplays();
+            });
+            document.getElementById('graphToggleBtn').addEventListener('click', toggleAnalyticsGraph);
+            document.getElementById('flowFieldToggle').addEventListener('change', e => isFlowVisible = e.target.checked);
+            document.getElementById('animateSourcesToggle').addEventListener('change', e => dynamicEnv.animateSources = e.target.checked);
+            document.getElementById('animateMaskToggle').addEventListener('change', e => dynamicEnv.animateMask = e.target.checked);
+            document.getElementById('agentCount').addEventListener('input', (e) => { params.agentCount = parseInt(e.target.value); updateSliderDisplays(); initializeSimulation(); });
+            document.getElementById('sensorAngle').addEventListener('input', (e) => { params.sensorAngle = parseFloat(e.target.value) * Math.PI / 180; updateSliderDisplays(); });
+            document.getElementById('decayRate').addEventListener('input', (e) => { params.decayRate = parseFloat(e.target.value); updateSliderDisplays(); });
+            document.getElementById('depositStrength').addEventListener('input', (e) => { params.depositStrength = parseFloat(e.target.value); updateSliderDisplays(); });
+            document.getElementById('speed').addEventListener('input', (e) => { params.speed = parseFloat(e.target.value); updateSliderDisplays(); });
+            document.getElementById('curvatureStrength').addEventListener('input', (e) => { params.curvatureStrength = parseFloat(e.target.value); updateSliderDisplays(); });
+            document.getElementById('globalFlowX').addEventListener('input', (e) => { globalFlow.x = parseFloat(e.target.value); updateSliderDisplays(); });
+            document.getElementById('globalFlowY').addEventListener('input', (e) => { globalFlow.y = parseFloat(e.target.value); updateSliderDisplays(); });
+            document.getElementById('maskInput').addEventListener('change', loadMaskFile);
+            document.getElementById('curvatureMapInput').addEventListener('change', loadCurvatureMapFile);
+            document.getElementById('infoPanel').addEventListener('click', () => document.getElementById('infoPanel').classList.add('hidden'));
+            setBrushMode('spawn');
+            updateFullscreenIcon();
+        }
+        
+        function startDrawing(x, y) {
+            const coords = { x: x / canvas.width * width, y: y / canvas.height * height };
+            if (wormholePlacingMode) { placeWormhole(x, y); return; }
+            switch (brushMode) {
+                case 'source': sources.push({ x: coords.x, y: coords.y }); break;
+                case 'sink': sinks.push({ x: coords.x, y: coords.y, radius: 25 }); break;
+                case 'spawn': spawnAgentsAt(x, y); break;
+            }
+        }
+        
+        function spawnAgentsAt(screenX, screenY) {
+            const coords = { x: screenX / canvas.width * width, y: screenY / canvas.height * height };
+            const spawnCount = Math.min(100, Math.floor(params.agentCount * 0.002));
+            for (let i = 0; i < spawnCount; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const radius = Math.random() * 20;
+                const agentX = coords.x + Math.cos(angle) * radius;
+                const agentY = coords.y + Math.sin(angle) * radius;
+                const index = Math.floor(Math.random() * agents.length);
+                if (index < agents.length) { agents[index] = new Agent(agentX, agentY, angle); }
+            }
+        }
+        
+        function calculateEfficiency() {
+            let totalConductivity = 0, activeNodes = 0;
+            for(let i = 0; i < conductivityField.length; i++){ if (conductivityField[i] > 0.01) { totalConductivity += conductivityField[i]; activeNodes++; } }
+            const cost = totalConductivity + params.agentCount * 0.0001;
+            const reward = activeNodes / (width * height);
+            const efficiency = cost > 0 ? reward / cost * 1000 : 0;
+            document.getElementById('efficiencyValue').textContent = efficiency.toFixed(2);
+        }
+        
+        function updateSliderDisplays() {
+            document.getElementById('agentCountValue').textContent = params.agentCount.toLocaleString();
+            document.getElementById('sensorAngleValue').textContent = (params.sensorAngle * 180 / Math.PI).toFixed(1) + '°';
+            document.getElementById('decayRateValue').textContent = params.decayRate.toFixed(3);
+            document.getElementById('depositStrengthValue').textContent = params.depositStrength.toFixed(2);
+            document.getElementById('speedValue').textContent = params.speed.toFixed(1);
+            document.getElementById('curvatureStrengthValue').textContent = params.curvatureStrength.toFixed(1);
+            document.getElementById('globalFlowXValue').textContent = globalFlow.x.toFixed(1);
+            document.getElementById('globalFlowYValue').textContent = globalFlow.y.toFixed(1);
+        }
+
+        function setPreset(presetName) {
+            currentPreset = presetName;
+            document.querySelectorAll('.preset-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelector(`[data-preset="${presetName}"]`).classList.add('active');
+            const preset = presets[presetName]; Object.assign(params, preset);
+            document.getElementById('agentCount').value = preset.agentCount;
+            document.getElementById('sensorAngle').value = preset.sensorAngle * 180 / Math.PI;
+            document.getElementById('decayRate').value = preset.decayRate;
+            document.getElementById('depositStrength').value = preset.depositStrength;
+            document.getElementById('speed').value = preset.speed;
+            updateSliderDisplays(); initializeSimulation();
+        }
+
+        function setColorMode(modeName) {
+            currentColorMode = modeName;
+            document.querySelectorAll('.color-mode-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelector(`[data-mode="${modeName}"]`).classList.add('active');
+        }
+
+        function resetSimulation() {
+            conductivityField.fill(0); tempField.fill(0); firingField.fill(0);
+            flowFieldX.fill(0); flowFieldY.fill(0);
+            analyticsData = { efficiency: [], conductivity: [], agents: [] };
+            clearSourcesAndSinks(); clearMask(); clearCurvatureMap(); clearWormholes();
+            initializeSimulation();
+        }
+
+        function togglePause() {
+            isPaused = !isPaused;
+            const btn = document.querySelector('.pause-btn');
+            btn.textContent = isPaused ? 'Resume' : 'Pause';
+            btn.style.background = isPaused ? 'rgba(100, 255, 100, 0.3)' : 'rgba(255, 200, 100, 0.3)';
+            btn.style.borderColor = isPaused ? 'rgba(100, 255, 100, 0.5)' : 'rgba(255, 200, 100, 0.5)';
+        }
+        
+        function toggleControls() {
+            const controls = document.getElementById('controls');
+            const toggleBtn = document.getElementById('toggleBtn');
+            controls.classList.toggle('collapsed');
+            toggleBtn.innerHTML = controls.classList.contains('collapsed') ? '&#9652;' : '&#9662;';
+        }
+
+        function generateMaze() {
+            const cellSize = 10;
+            const mazeWidth = Math.floor(width / cellSize); const mazeHeight = Math.floor(height / cellSize);
+            const maze = Array(mazeHeight).fill(0).map(() => Array(mazeWidth).fill(0));
+            const stack = [];
+            function getNeighbors(x, y) {
+                const neighbors = []; const directions = [[0, -2], [2, 0], [0, 2], [-2, 0]];
+                for (const [dx, dy] of directions) { const nx = x + dx; const ny = y + dy; if (nx >= 0 && nx < mazeWidth && ny >= 0 && ny < mazeHeight && maze[ny][nx] === 0) { neighbors.push([nx, ny]); } }
+                return neighbors;
+            }
+            let currentX = Math.floor(Math.random() * (mazeWidth / 2)) * 2; let currentY = Math.floor(Math.random() * (mazeHeight / 2)) * 2;
+            maze[currentY][currentX] = 1; stack.push([currentX, currentY]);
+            while (stack.length > 0) {
+                [currentX, currentY] = stack[stack.length - 1];
+                const neighbors = getNeighbors(currentX, currentY);
+                if (neighbors.length > 0) {
+                    const [nextX, nextY] = neighbors[Math.floor(Math.random() * neighbors.length)];
+                    const wallX = currentX + (nextX - currentX) / 2; const wallY = currentY + (nextY - currentY) / 2;
+                    maze[wallY][wallX] = 1; maze[nextY][nextX] = 1; stack.push([nextX, nextY]);
+                } else { stack.pop(); }
+            }
+            rawMaskField = new Float32Array(width * height);
+            for (let y = 0; y < height; y++) { for (let x = 0; x < width; x++) { const mazeX = Math.floor(x / cellSize); const mazeY = Math.floor(y / cellSize); rawMaskField[y * width + x] = maze[mazeY]?.[mazeX] ? 1.0 : 0.0; }}
+
+
+            hasMask = true; processMask(); initializeSimulation();
+        }
+
+        function clearMask() { hasMask = false; rawMaskField = []; maskField = []; initializeSimulation(); }
+        function invertMask() { if (!hasMask) return; for (let i = 0; i < rawMaskField.length; i++) { rawMaskField[i] = 1.0 - rawMaskField[i]; } processMask(); initializeSimulation(); }
+        function loadMaskFile(event) {
+            const file = event.target.files[0]; if (!file) return; const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+// --- WITH THIS NEW LOGIC ---
+const keepAspect = document.getElementById('maskAspectRatioToggle').checked;
+const tempCanvas = document.createElement('canvas');
+tempCanvas.width = width;
+tempCanvas.height = height;
+const tempCtx = tempCanvas.getContext('2d');
+
+// Fill background with black (impassable) before drawing
+tempCtx.fillStyle = 'black';
+tempCtx.fillRect(0, 0, width, height);
+
+if (keepAspect) {
+    const imgAspect = img.width / img.height;
+    const canvasAspect = width / height;
+    let drawWidth, drawHeight;
+
+    if (imgAspect > canvasAspect) { // Image is wider than the canvas viewport
+        drawWidth = width;
+        drawHeight = width / imgAspect;
+    } else { // Image is taller or has the same aspect ratio
+        drawHeight = height;
+        drawWidth = height * imgAspect;
+    }
+    const x = (width - drawWidth) / 2;
+    const y = (height - drawHeight) / 2;
+    tempCtx.drawImage(img, x, y, drawWidth, drawHeight);
+} else {
+    // Original behavior: stretch image to fill the canvas
+    tempCtx.drawImage(img, 0, 0, width, height);
+}
+
+const imageData = tempCtx.getImageData(0, 0, width, height);
+const data = imageData.data;
+rawMaskField = new Float32Array(width * height);
+for (let i = 0; i < data.length; i += 4) {
+    rawMaskField[i / 4] = (data[i] + data[i + 1] + data[i + 2]) / 3 / 255.0;
+}
+// --- END OF NEW LOGIC ---
+                    hasMask = true; processMask(); initializeSimulation();
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+        function processMask() { if (!hasMask || rawMaskField.length === 0) return; maskField = new Float32Array(width * height); for (let i = 0; i < rawMaskField.length; i++) { maskField[i] = useHardBoundaries ? (rawMaskField[i] < 0.5 ? 0.0 : 1.0) : rawMaskField[i]; } }
+        function generateCurvatureField() {
+            curvatureField = new Float32Array(width * height); const scale = 10 / Math.min(width, height);
+            for (let y = 0; y < height; y++) { for (let x = 0; x < width; x++) { const i = y * width + x; const v1 = Math.sin(x * scale * 2) * Math.cos(y * scale * 3); const v2 = Math.sin((x + y) * scale * 0.5) * Math.cos((x - y) * scale * 0.8); curvatureField[i] = v1 + v2; }}
+        }
+        function loadCurvatureMapFile(event) {
+            const file = event.target.files[0]; if (!file) return; const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+// --- WITH THIS NEW LOGIC ---
+const keepAspect = document.getElementById('curvatureAspectRatioToggle').checked;
+const tempCanvas = document.createElement('canvas');
+tempCanvas.width = width;
+tempCanvas.height = height;
+const tempCtx = tempCanvas.getContext('2d');
+
+// Fill background with medium gray (neutral curvature)
+tempCtx.fillStyle = 'rgb(128, 128, 128)';
+tempCtx.fillRect(0, 0, width, height);
+
+if (keepAspect) {
+    const imgAspect = img.width / img.height;
+    const canvasAspect = width / height;
+    let drawWidth, drawHeight;
+
+    if (imgAspect > canvasAspect) { // Image is wider
+        drawWidth = width;
+        drawHeight = width / imgAspect;
+    } else { // Image is taller
+        drawHeight = height;
+        drawWidth = height * imgAspect;
+    }
+    const x = (width - drawWidth) / 2;
+    const y = (height - drawHeight) / 2;
+    tempCtx.drawImage(img, x, y, drawWidth, drawHeight);
+} else {
+    // Original stretch-to-fill behavior
+    tempCtx.drawImage(img, 0, 0, width, height);
+}
+
+const imageData = tempCtx.getImageData(0, 0, width, height);
+const data = imageData.data;
+curvatureField = new Float32Array(width * height);
+for (let i = 0; i < data.length; i += 4) {
+    curvatureField[i / 4] = ((data[i] + data[i + 1] + data[i + 2]) / 3 / 255.0) * 2.0 - 1.0;
+}
+// --- END OF NEW LOGIC ---
+                    hasCurvatureMap = true; document.getElementById('curvatureToggle').checked = true; params.useCurvature = true;
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+        function clearCurvatureMap() { hasCurvatureMap = false; generateCurvatureField(); }
+        function setBrushMode(mode) {
+            brushMode = mode;
+            document.querySelectorAll('.action-btn[id^="tool-"]').forEach(btn => { btn.style.background = ''; btn.style.borderColor = ''; });
+            const activeBtn = document.getElementById(`tool-${mode}`);
+            if(activeBtn){ activeBtn.style.background = 'rgba(100, 200, 255, 0.3)'; activeBtn.style.borderColor = 'rgba(100, 200, 255, 0.5)'; }
+            canvas.style.cursor = (mode === 'spawn') ? 'crosshair' : (mode === 'source') ? 'copy' : 'grab';
+        }
+        function handleSources() { sources.forEach(s => { if(Math.random() < 0.1 && agents.length < params.agentCount * 1.5) for(let i=0; i<5; i++) agents.push(new Agent(s.x, s.y)); }); }
+        function handleSinks(agent) { for(const s of sinks) if(Math.sqrt((agent.x - s.x)**2 + (agent.y - s.y)**2) < s.radius) return true; return false; }
+        function clearSourcesAndSinks() { sources = []; sinks = []; }
+        function setWormholeMode(enabled) { wormholePlacingMode = enabled; canvas.style.cursor = enabled ? 'cell' : 'crosshair'; if (!enabled) tempWormhole = null; }
+        function placeWormhole(screenX, screenY) {
+            const coords = { x: screenX / canvas.width * width, y: screenY / canvas.height * height };
+            if (!tempWormhole) { tempWormhole = { x: coords.x, y: coords.y, radius: 15 }; }
+            else { wormholes.push([tempWormhole, { x: coords.x, y: coords.y, radius: 15 }]); tempWormhole = null; setWormholeMode(false); }
+        }
+        function clearWormholes() { wormholes = []; tempWormhole = null; setWormholeMode(false); }
+        function toggleAnalyticsGraph() { isGraphVisible = !isGraphVisible; graphCanvas.classList.toggle('visible', isGraphVisible); }
+        function checkGPUSupport() {
+            try {
+                const testCanvas = document.createElement('canvas'); const gl = testCanvas.getContext('webgl2');
+                gpuSupported = !!gl; const gpuStatus = document.getElementById('gpuStatus');
+                gpuStatus.textContent = gpuSupported ? '(Available)' : '(Not Available)';
+                if (!gpuSupported) document.getElementById('gpuToggle').disabled = true;
+            } catch (e) {
+                gpuSupported = false; document.getElementById('gpuStatus').textContent = '(Not Available)';
+                document.getElementById('gpuToggle').disabled = true;
+            }
+        }
+        function toggleFullscreen() {
+            if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+                if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen();
+                else if (document.documentElement.webkitRequestFullscreen) document.documentElement.webkitRequestFullscreen();
+            } else {
+                if (document.exitFullscreen) document.exitFullscreen();
+                else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+            }
+        }
+        function updateFullscreenIcon() {
+            const fullscreenBtn = document.getElementById('fullscreenBtn'); if (!fullscreenBtn) return;
+            const isFullscreen = !!(document.fullscreenElement || document.webkitFullscreenElement);
+            fullscreenBtn.innerHTML = isFullscreen ? `<svg viewBox="0 0 24 24"><path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z"/></svg>` : `<svg viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>`;
+            fullscreenBtn.title = isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen";
+        }
+
+        if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', init); } else { init(); }
+
+
+    </script>
+</body>
+</html>
