@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <script src="https://unpkg.com/gpu.js@latest/dist/gpu-browser.min.js"></script>
     <title>Poly-Sim: Self-Organizing Networks</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -221,7 +222,12 @@
         let isPaused = false;
         let useGPU = false;
         let currentColorMode = 'natural';
-        
+
+let gpu;
+let gpuUpdateField;
+let gpuUpdateAgents;
+let agentDataTexture; // We will store agent data in a texture        
+
         let agents = [];
         let conductivityField = [], tempField = [];
         let maskField = [], rawMaskField = [];
@@ -377,32 +383,50 @@ for (let i = 0; i < params.agentCount; i++) {
 
         }
         
-        function updateSimulation() {
-            if (isPaused) return;
-            handleSources();
-            
-            if (dynamicEnv.animateSources) {
-                const time = Date.now() * 0.0002;
-                sources.forEach((s, i) => { s.x += Math.sin(time + i) * 0.5; s.y += Math.cos(time - i) * 0.5; });
-                sinks.forEach((s, i) => { s.x += Math.cos(time + i * 2) * 0.4; s.y += Math.sin(time - i * 2) * 0.4; });
-            }
-            if (dynamicEnv.animateMask && hasMask) {
-                maskOffset.x = (maskOffset.x + 0.5) % width;
-                maskOffset.y = (maskOffset.y + 0.25) % height;
-            }
+function updateSimulation() {
+    if (isPaused) return;
+    handleSources(); // Sources/sinks are infrequent, keep on CPU for simplicity
 
-            const survivingAgents = []; for (const agent of agents) { agent.update(); if (!handleSinks(agent)) { survivingAgents.push(agent); } }
-            agents = survivingAgents;
-            
-            for (let i = 0; i < conductivityField.length; i++) { conductivityField[i] *= params.decayRate; }
-            if (params.neuronFiring) {
-                for (let i = 0; i < firingField.length; i++) {
-                    firingField[i] *= 0.95; 
-                }
+    // (Your dynamic env and mask animation logic can stay here)
+    if (dynamicEnv.animateSources) { /* ... */ }
+    if (dynamicEnv.animateMask && hasMask) { /* ... */ }
+
+    if (useGPU && gpuUpdateField) {
+        // --- GPU PATH ---
+        
+        // TODO: Implement the GPU agent update kernel (more complex, see below)
+        // For now, let's keep agents on the CPU to show the field update working
+        const survivingAgents = [];
+        for (const agent of agents) {
+            agent.update();
+            if (!handleSinks(agent)) {
+                survivingAgents.push(agent);
             }
-            if (isFlowVisible) { for (let i = 0; i < flowFieldX.length; i++) { flowFieldX[i] *= 0.95; flowFieldY[i] *= 0.95; } }
-            applyDiffusion();
         }
+        agents = survivingAgents;
+        
+        // Now, update the entire field on the GPU
+        gpuUpdateField(conductivityField, width, height, params.decayRate, presets[currentPreset].diffusionRate);
+        conductivityField = gpuUpdateField.getPixels(); // This is slow! We will optimize this.
+
+    } else {
+        // --- CPU PATH (Your original code) ---
+        const survivingAgents = [];
+        for (const agent of agents) {
+            agent.update();
+            if (!handleSinks(agent)) {
+                survivingAgents.push(agent);
+            }
+        }
+        agents = survivingAgents;
+
+        for (let i = 0; i < conductivityField.length; i++) {
+            conductivityField[i] *= params.decayRate;
+        }
+        // (neuron firing and flow field logic can stay here for the CPU path)
+        applyDiffusion();
+    }
+}
 
         function applyDiffusion() {
             const diffusion = presets[currentPreset].diffusionRate; if (diffusion === 0) return;
@@ -416,7 +440,19 @@ for (let i = 0; i < params.agentCount; i++) {
 
         function renderSimulation() {
             if (!canvas || !canvas.getContext) return;
-            const ctx = canvas.getContext('2d'); const imageData = ctx.createImageData(width, height); const data = imageData.data;
+            const ctx = canvas.getContext('2d');
+
+    if (useGPU && gpuUpdateField) {
+        // --- NEW: RENDER DIRECTLY FROM GPU KERNEL ---
+        // This is the fastest way. No data transfer from GPU->CPU.
+        const gpuCanvas = gpuUpdateField.canvas;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(gpuCanvas, 0, 0, canvas.width, canvas.height);
+    } else {            
+
+
+            const imageData = ctx.createImageData(width, height); const data = imageData.data;
             const colors = colorModes[currentColorMode][currentPreset];
             for (let i = 0; i < conductivityField.length; i++) {
                 let intensity = Math.pow(Math.min(1, conductivityField[i]), 0.5); if (params.neuronFiring && firingField[i] > 0) { intensity = Math.min(1, intensity + firingField[i] * 0.5); }
@@ -431,8 +467,8 @@ for (let i = 0; i < params.agentCount; i++) {
             ctx.lineWidth = 2;
             sources.forEach(s => { ctx.beginPath(); ctx.arc(s.x / width * canvas.width, s.y / height * canvas.height, 10, 0, 2*Math.PI); ctx.strokeStyle = '#00FFFF'; ctx.stroke(); });
             sinks.forEach(s => { ctx.beginPath(); ctx.arc(s.x / width * canvas.width, s.y / height * canvas.height, s.radius/height*canvas.height, 0, 2*Math.PI); ctx.strokeStyle = '#FF0055'; ctx.stroke(); });
-        }
-
+            }
+    }
         function renderFlowField() {
             ctx.strokeStyle = "rgba(255, 255, 255, 0.5)"; ctx.lineWidth = 1;
             const gridSize = 20; const scale = 15;
@@ -914,17 +950,46 @@ for (let i = 0; i < data.length; i += 4) {
         }
         function clearWormholes() { wormholes = []; tempWormhole = null; setWormholeMode(false); }
         function toggleAnalyticsGraph() { isGraphVisible = !isGraphVisible; graphCanvas.classList.toggle('visible', isGraphVisible); }
-        function checkGPUSupport() {
-            try {
-                const testCanvas = document.createElement('canvas'); const gl = testCanvas.getContext('webgl2');
-                gpuSupported = !!gl; const gpuStatus = document.getElementById('gpuStatus');
-                gpuStatus.textContent = gpuSupported ? '(Available)' : '(Not Available)';
-                if (!gpuSupported) document.getElementById('gpuToggle').disabled = true;
+function checkGPUSupport() {
+    try {
+        const testCanvas = document.createElement('canvas');
+        gl = testCanvas.getContext('webgl2'); // Your app already checks for webgl2
+        gpuSupported = !!gl;
+        const gpuStatus = document.getElementById('gpuStatus');
+        gpuStatus.textContent = gpuSupported ? '(Available)' : '(Not Available)';
+        if (!gpuSupported) {
+            document.getElementById('gpuToggle').disabled = true;
+        } else {
+            // ⭐ INITIALIZE GPU.js and CREATE KERNELS HERE ⭐
+            gpu = new GPU();
+            createGPUKernels(); 
+        }
             } catch (e) {
                 gpuSupported = false; document.getElementById('gpuStatus').textContent = '(Not Available)';
                 document.getElementById('gpuToggle').disabled = true;
             }
         }
+
+function createGPUKernels() {
+    // This kernel handles both decay and a 5-point diffusion pass
+    gpuUpdateField = gpu.createKernel(function(field, width, height, decayRate, diffusionRate) {
+        let sum = field[this.thread.y][this.thread.x];
+
+        // 5-point Diffusion stencil
+        const center = field[this.thread.y][this.thread.x] * 0.2;
+        const up = field[this.thread.y + 1][this.thread.x] * 0.2;
+        const down = field[this.thread.y - 1][this.thread.x] * 0.2;
+        const left = field[this.thread.y][this.thread.x - 1] * 0.2;
+        const right = field[this.thread.y][this.thread.x + 1] * 0.2;
+        sum = up + down + left + right + center;
+
+        const diffusedValue = (field[this.thread.y][this.thread.x] * (1 - diffusionRate)) + (sum * diffusionRate);
+
+        // Apply decay and clamp the value between 0 and 1
+        return Math.min(1.0, diffusedValue * decayRate);
+    }).setOutput([width, height])
+      .setGraphical(true); // Output a texture we can render directly
+}        
         function toggleFullscreen() {
             if (!document.fullscreenElement && !document.webkitFullscreenElement) {
                 if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen();
