@@ -3,7 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <script src="https://unpkg.com/gpu.js@latest/dist/gpu-browser.min.js"></script>
     <title>Poly-Sim: Self-Organizing Networks</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -212,6 +211,9 @@
         <div class="fps-counter" id="fpsCounter">60 FPS</div>
         <div class="info-panel" id="infoPanel"><strong>Welcome to Poly-Sim v1.0!</strong><br>Explore new visualization and dynamic environment features.<br><small>Tap here to hide • Tap controls to collapse</small></div>
     </div>
+
+    <!-- init of gpu library -->
+    <script src="https://unpkg.com/gpu.js@latest/dist/gpu-browser.min.js"></script>
 
     <script>
         // --- GLOBAL VARIABLES ---
@@ -680,12 +682,18 @@ function setupEventListeners() {
             document.addEventListener('webkitfullscreenchange', updateFullscreenIcon);
             document.querySelectorAll('.preset-btn').forEach(btn => btn.addEventListener('click', () => setPreset(btn.dataset.preset)));
             document.querySelectorAll('.color-mode-btn').forEach(btn => btn.addEventListener('click', () => setColorMode(btn.dataset.mode)));
-            document.getElementById('gpuToggle').addEventListener('change', (e) => {
-                useGPU = e.target.checked && gpuSupported;
-                const gpuIndicator = document.getElementById('gpuIndicator');
-                gpuIndicator.textContent = useGPU ? 'GPU' : 'CPU';
-                gpuIndicator.className = useGPU ? 'gpu-indicator gpu-on' : 'gpu-indicator gpu-off';
-            });
+document.getElementById('gpuToggle').addEventListener('change', (e) => {
+    useGPU = e.target.checked && gpuSupported;
+    const gpuIndicator = document.getElementById('gpuIndicator');
+    gpuIndicator.textContent = useGPU ? 'GPU' : 'CPU';
+    gpuIndicator.className = useGPU ? 'gpu-indicator gpu-on' : 'gpu-indicator gpu-off';
+
+    // Create the GPU kernels ON-DEMAND the first time the user toggles GPU on.
+    if (useGPU && !gpuUpdateField) { // Check if kernels are not already created
+        console.log("Creating GPU kernels...");
+        createGPUKernels();
+    }
+});
             document.getElementById('hardBoundariesToggle').addEventListener('change', (e) => { useHardBoundaries = e.target.checked; if (hasMask) { processMask(); initializeSimulation(); } });
             document.getElementById('neuronFiring').addEventListener('change', (e) => params.neuronFiring = e.target.checked);
             document.getElementById('curvatureToggle').addEventListener('change', (e) => params.useCurvature = e.target.checked);
@@ -951,24 +959,35 @@ for (let i = 0; i < data.length; i += 4) {
         function clearWormholes() { wormholes = []; tempWormhole = null; setWormholeMode(false); }
         function toggleAnalyticsGraph() { isGraphVisible = !isGraphVisible; graphCanvas.classList.toggle('visible', isGraphVisible); }
 function checkGPUSupport() {
-    try {
-        const testCanvas = document.createElement('canvas');
-        gl = testCanvas.getContext('webgl2'); // Your app already checks for webgl2
-        gpuSupported = !!gl;
-        const gpuStatus = document.getElementById('gpuStatus');
-        gpuStatus.textContent = gpuSupported ? '(Available)' : '(Not Available)';
-        if (!gpuSupported) {
-            document.getElementById('gpuToggle').disabled = true;
-        } else {
-            // ⭐ INITIALIZE GPU.js and CREATE KERNELS HERE ⭐
+    // We do NOT need to create a canvas or get a context manually.
+    // GPU.js handles all of its own detection.
+
+    // Step 1: Check if the library thinks the browser is capable.
+    // This is the most reliable check. It looks for WebGL1, WebGL2, or WebGPU.
+    gpuSupported = GPU.isGPUSupported;
+
+    const gpuStatus = document.getElementById('gpuStatus');
+    
+    if (gpuSupported) {
+        try {
+            // Step 2: Try to actually initialize GPU.js.
+            // This is where the error was likely happening before.
             gpu = new GPU();
-            createGPUKernels(); 
+            gpuStatus.textContent = '(Available)';
+            // We will create the kernels later, only when the user toggles GPU on.
+        } catch (e) {
+            // If initialization fails, we know for sure it's not available.
+            console.error("GPU.js initialization failed:", e); // THIS IS VITAL FOR DEBUGGING
+            gpuSupported = false;
+            gpuStatus.textContent = '(Init Failed)';
+            document.getElementById('gpuToggle').disabled = true;
         }
-            } catch (e) {
-                gpuSupported = false; document.getElementById('gpuStatus').textContent = '(Not Available)';
-                document.getElementById('gpuToggle').disabled = true;
-            }
-        }
+    } else {
+        // If the browser isn't even capable, just report it.
+        gpuStatus.textContent = '(Not Available)';
+        document.getElementById('gpuToggle').disabled = true;
+    }
+}
 
 function createGPUKernels() {
     // This kernel handles both decay and a 5-point diffusion pass
