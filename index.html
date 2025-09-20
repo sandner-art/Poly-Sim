@@ -63,6 +63,37 @@
         .version-info { text-align: center; padding: 12px; font-size: 10px; opacity: 0.6; border-top: 1px solid rgba(255, 255, 255, 0.1); margin-top: 15px; }
         .version-info a { color: #64B5F6; text-decoration: none; }
         .version-info a:hover { text-decoration: underline; }
+
+/* Style for the main dropdown box itself */
+#initPattern {
+    width: 100%;
+    padding: 8px;
+    background-color: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 6px;
+    color: white;
+    cursor: pointer;
+    /* The next 3 lines remove the default OS dropdown arrow */
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    /* Add our own custom arrow that fits the dark theme */
+    background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23FFFFFF%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E');
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    background-size: 10px;
+}
+
+/* This is the key part: Style for the individual options in the list */
+#initPattern option {
+    background: #1c1c1e; /* A dark background for the options list */
+    color: #eee;       /* A light text color for readability */
+}
+
+/* Optional: Add a subtle hover effect for the options */
+#initPattern option:hover {
+    background: rgba(100, 150, 255, 0.3);
+}        
         #analyticsCanvas { position: fixed; bottom: 20px; right: 20px; width: 250px; height: 120px; background: rgba(0,0,0,0.85); border: 1px solid rgba(255,255,255,0.15); border-radius: 10px; pointer-events: none; opacity: 0; transition: opacity 0.3s ease; z-index: 99; }
         #analyticsCanvas.visible { opacity: 1; pointer-events: auto; }
         #graphToggleBtn { position: fixed; top: 60px; right: 20px; width: 35px; height: 35px; background: rgba(0,0,0,0.8); color: white; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; pointer-events: auto; z-index: 101; }
@@ -114,6 +145,31 @@
                         <div class="color-mode-btn" data-mode="neon">Neon</div>
                     </div>
                 </div>
+
+<!-- ENTIRE NEW start SECTION -->
+<div class="section">
+    <div class="section-title">Agent Initialization</div>
+    <div class="control-group">
+        <label for="initPattern">Placement Pattern</label>
+            <select id="initPattern">
+            <option value="central-circle">Central Circle</option>
+            <option value="random-circles">Multiple Random Circles</option>
+            <option value="grid">Grid of Circles</option>
+            <option value="ring">Ring of Circles</option>
+            <option value="line-left">Line (Left Edge)</option>
+            <option value="noise">Noise Scatter</option>
+            <option value="from-mask">From Mask Edges</option>
+        </select>
+    </div>
+    <div class="control-group">
+        <label>Pattern Detail <span id="patternDetailValue">5</span></label>
+        <input type="range" class="slider" id="patternDetail" min="1" max="20" value="5" step="1">
+    </div>
+    <div class="checkbox-group" style="justify-content: center;">
+        <input type="checkbox" id="randomizeSizeToggle">
+        <label for="randomizeSizeToggle">Randomize Sub-Pattern Size</label>
+    </div>
+</div>
 
                 <div class="section">
                     <div class="section-title">Interaction Tools</div>
@@ -362,27 +418,113 @@ if (hasMask && sampleMask(newX, newY) < 0.5) {
             if (!hasCurvatureMap) generateCurvatureField();
             
 // --- THIS IS THE NEW, CORRECTED BLOCK ---
-agents = [];
-const centerX = width * 0.5;
-const centerY = height * 0.5;
-const radius = Math.min(width, height) * 0.3;
+    agents = [];
+    const pattern = document.getElementById('initPattern').value;
+    const detail = parseInt(document.getElementById('patternDetail').value);
+    const randomize = document.getElementById('randomizeSizeToggle').checked;
 
-for (let i = 0; i < params.agentCount; i++) {
-    const angle = Math.random() * Math.PI * 2;
-    const r = Math.random() * radius;
-    const x = centerX + Math.cos(angle) * r;
-    const y = centerY + Math.sin(angle) * r;
+    let placementPoints = [];
+    const centerX = width * 0.5;
+    const centerY = height * 0.5;
 
-    // Check if the location is valid before creating an agent there
-    if (!hasMask || sampleMask(x, y) >= 0.5) {
-        agents.push(new Agent(x, y, angle));
-    } else {
-        // If spawned in a wall, decrement 'i' to try again for this agent.
-        i--; 
+    // 1. Generate a list of points (centers of circles) based on the pattern
+    switch (pattern) {
+        case 'central-circle':
+            placementPoints.push({ x: centerX, y: centerY, radius: Math.min(width, height) * 0.3 });
+            break;
+        case 'random-circles':
+            for (let i = 0; i < detail; i++) {
+                placementPoints.push({
+                    x: Math.random() * width,
+                    y: Math.random() * height,
+                    radius: (randomize ? Math.random() * 80 : 50) + 20
+                });
+            }
+            break;
+        case 'grid':
+            const gridSize = detail + 1;
+            for (let i = 0; i < gridSize; i++) {
+                for (let j = 0; j < gridSize; j++) {
+                    placementPoints.push({
+                        x: (width / (gridSize + 1)) * (i + 1),
+                        y: (height / (gridSize + 1)) * (j + 1),
+                        radius: (randomize ? Math.random() * 40 : 30) + 10
+                    });
+                }
+            }
+            break;
+        case 'ring':
+            const ringRadius = Math.min(width, height) * 0.35;
+            for (let i = 0; i < detail * 2; i++) {
+                const angle = (i / (detail * 2)) * Math.PI * 2;
+                placementPoints.push({
+                    x: centerX + Math.cos(angle) * ringRadius,
+                    y: centerY + Math.sin(angle) * ringRadius,
+                    radius: (randomize ? Math.random() * 30 : 25) + 5
+                });
+            }
+            break;
+        case 'line-left':
+             placementPoints.push({ x: 40, y: centerY, radius: height * (detail/20) });
+             break;
+        case 'noise':
+            // This just scatters agents everywhere, respecting the mask.
+            // The detail slider has no effect here.
+            for (let i = 0; i < params.agentCount; i++) {
+                const x = Math.random() * width;
+                const y = Math.random() * height;
+                if (!hasMask || sampleMask(x, y) >= 0.5) {
+                    agents.push(new Agent(x, y, Math.random() * Math.PI * 2));
+                } else { i--; }
+            }
+            return; // Exit early as agents are already placed
+        case 'from-mask':
+             if (hasMask) {
+                // Find edges in the mask (where black meets white)
+                for (let y = 1; y < height - 1; y++) {
+                    for (let x = 1; x < width - 1; x++) {
+                        const i = y * width + x;
+                        if (maskField[i] > 0.5) { // Is a path
+                            // Check neighbors for a wall
+                            if (maskField[i-1] < 0.5 || maskField[i+1] < 0.5 || maskField[i-width] < 0.5 || maskField[i+width] < 0.5) {
+                                if (Math.random() < 0.1) { // Sparsely sample edge points
+                                     placementPoints.push({ x: x, y: y, radius: (randomize ? Math.random() * 15 : 10) + 5 });
+                                }
+                            }
+                        }
+                    }
+                }
+             }
+             if (placementPoints.length === 0) { // Fallback if no mask or no edges
+                placementPoints.push({ x: centerX, y: centerY, radius: Math.min(width, height) * 0.3 });
+             }
+             break;
+    }
+
+    // 2. Distribute agents among the generated placement points
+    const agentsPerPoint = Math.floor(params.agentCount / placementPoints.length);
+    for (const point of placementPoints) {
+        for (let i = 0; i < agentsPerPoint; i++) {
+            // Find a valid spot within the circle's radius
+            let placed = false;
+            let attempts = 0;
+            while (!placed && attempts < 20) {
+                const angle = Math.random() * Math.PI * 2;
+                const r = Math.random() * point.radius;
+                const x = point.x + Math.cos(angle) * r;
+                const y = point.y + Math.sin(angle) * r;
+
+                if (!hasMask || sampleMask(x, y) >= 0.5) {
+                    agents.push(new Agent(x, y, angle));
+                    placed = true;
+                }
+                attempts++;
+            }
+        }
     }
 }
 
-        }
+        
         
 function updateSimulation() {
     if (isPaused) return;
@@ -681,7 +823,15 @@ function setupEventListeners() {
             document.addEventListener('webkitfullscreenchange', updateFullscreenIcon);
             document.querySelectorAll('.preset-btn').forEach(btn => btn.addEventListener('click', () => setPreset(btn.dataset.preset)));
             document.querySelectorAll('.color-mode-btn').forEach(btn => btn.addEventListener('click', () => setColorMode(btn.dataset.mode)));
-document.getElementById('gpuToggle').addEventListener('change', (e) => {
+
+document.getElementById('initPattern').addEventListener('change', initializeSimulation);
+document.getElementById('patternDetail').addEventListener('input', (e) => {
+    document.getElementById('patternDetailValue').textContent = e.target.value;
+    initializeSimulation();
+});
+document.getElementById('randomizeSizeToggle').addEventListener('change', initializeSimulation);            
+
+            document.getElementById('gpuToggle').addEventListener('change', (e) => {
     useGPU = e.target.checked && gpuSupported;
     const gpuIndicator = document.getElementById('gpuIndicator');
     gpuIndicator.textContent = useGPU ? 'GPU' : 'CPU';
