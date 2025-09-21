@@ -426,20 +426,33 @@ class Agent {
     /**
      * The update method contains the core logic for agent movement, sensing, and interaction.
      */
-    update() {
-        // --- WORMHOLE LOGIC ---
-        for (const pair of wormholes) {
-            for (let i = 0; i < 2; i++) {
-                const w = pair[i];
-                if (Math.sqrt((this.x - w.x) ** 2 + (this.y - w.y) ** 2) < w.radius) {
-                    const otherW = pair[1 - i];
-                    this.x = otherW.x;
-                    this.y = otherW.y;
-                    this.angle += (Math.random() - 0.5) * 0.2;
-                    break;
-                }
+update() {
+    // --- WORMHOLE LOGIC ---
+    for (const pair of wormholes) {
+        for (let i = 0; i < 2; i++) {
+            const w = pair[i];
+            if (Math.sqrt((this.x - w.x) ** 2 + (this.y - w.y) ** 2) < w.radius) {
+                const otherW = pair[1 - i];
+                this.x = otherW.x;
+                this.y = otherW.y;
+                this.angle += (Math.random() - 0.5) * 0.2;
+                break;
             }
         }
+    }
+
+    // --- SENSOR AND STEERING LOGIC ---
+    const sensorDist = params.sensorDistance;
+    const sensorAngle = params.sensorAngle;
+    const leftVal = sampleConductivity(this.x + Math.cos(this.angle - sensorAngle) * sensorDist, this.y + Math.sin(this.angle - sensorAngle) * sensorDist);
+    const rightVal = sampleConductivity(this.x + Math.cos(this.angle + sensorAngle) * sensorDist, this.y + Math.sin(this.angle + sensorAngle) * sensorDist);
+    const centerVal = sampleConductivity(this.x + Math.cos(this.angle) * sensorDist, this.y + Math.sin(this.angle) * sensorDist);
+    let steerAngle = 0;
+    if (centerVal > leftVal && centerVal > rightVal) { steerAngle = 0; } 
+    else if (leftVal > rightVal) { steerAngle = -sensorAngle * 0.1; } 
+    else if (rightVal > leftVal) { steerAngle = sensorAngle * 0.1; } 
+    else { steerAngle = (Math.random() - 0.5) * sensorAngle * 0.2; }
+    this.angle += steerAngle;
 
     // --- EXTERNAL FORCES AND MOVEMENT ---
 
@@ -479,62 +492,57 @@ class Agent {
         this.y = (newY + height) % height;
     }
 
-        // --- DEPOSITING DATA AND INCREMENTING AGE ---
-        this.age++; // Increment agent's age each frame
-        const floorX = Math.floor(this.x);
-        const floorY = Math.floor(this.y);
-        depositAt(floorX, floorY, params.depositStrength);
+    // (The rest of the function remains the same...)
+    // --- DEPOSITING DATA AND INCREMENTING AGE ---
+    this.age++; // Increment agent's age each frame
+    const floorX = Math.floor(this.x);
+    const floorY = Math.floor(this.y);
+    depositAt(floorX, floorY, params.depositStrength);
 
-        if (floorX >= 0 && floorX < width && floorY >= 0 && floorY < height) {
-            const index = floorY * width + floorX;
-            // Deposit data for visualizations
-            ageField[index] = this.age;
-            directionField[index] = this.angle / (Math.PI * 2); // Normalize angle to [0, 1]
-            recencyField[index] = 1.0; // Mark this spot as recently active
+    if (floorX >= 0 && floorX < width && floorY >= 0 && floorY < height) {
+        const index = floorY * width + floorX;
+        ageField[index] = this.age;
+        directionField[index] = this.angle / (Math.PI * 2);
+        recencyField[index] = 1.0;
+    }
+
+    // --- NEW, IMPROVED NEURAL FIRING LOGIC ---
+    if (params.neuronFiring) {
+        const firingMode = document.getElementById('firingMode').value;
+        const firingRate = parseFloat(document.getElementById('firingRate').value);
+        let shouldFire = false;
+        switch (firingMode) {
+            case 'random':
+                shouldFire = Math.random() < firingRate;
+                break;
+            case 'junction':
+                if (centerVal > 0.2 && leftVal > 0.15 && rightVal > 0.15) {
+                    shouldFire = Math.random() < firingRate * 5.0;
+                }
+                break;
+            case 'oscillator':
+                const period = Math.floor(1 / (firingRate * 2));
+                if (this.age > 0 && this.age % period === 0) {
+                    shouldFire = true;
+                }
+                break;
         }
-
-        // --- NEW, IMPROVED NEURAL FIRING LOGIC ---
-        if (params.neuronFiring) {
-            const firingMode = document.getElementById('firingMode').value;
-            const firingRate = parseFloat(document.getElementById('firingRate').value);
-            let shouldFire = false;
-
-            switch (firingMode) {
-                case 'random':
-                    shouldFire = Math.random() < firingRate;
-                    break;
-                case 'junction':
-                    // Fire if all three forward sensors detect a strong path
-                    if (centerVal > 0.2 && leftVal > 0.15 && rightVal > 0.15) {
-                        shouldFire = Math.random() < firingRate * 5.0; // More likely at junctions
-                    }
-                    break;
-                case 'oscillator':
-                    // The rate slider now controls the period
-                    const period = Math.floor(1 / (firingRate * 2));
-                    if (this.age > 0 && this.age % period === 0) {
-                        shouldFire = true;
-                    }
-                    break;
-            }
-
-            if (shouldFire) {
-                this.fire();
-            }
-        }
-
-        // --- FLOW FIELD DEPOSIT ---
-        if (isFlowVisible) {
-            const ix = Math.floor(this.x);
-            const iy = Math.floor(this.y);
-            if (ix >= 0 && ix < width && iy >= 0 && iy < height) {
-                const index = iy * width + ix;
-                flowFieldX[index] += this.dx;
-                flowFieldY[index] += this.dy;
-            }
+        if (shouldFire) {
+            this.fire();
         }
     }
-}
+
+    // --- FLOW FIELD DEPOSIT ---
+    if (isFlowVisible) {
+        const ix_flow = Math.floor(this.x);
+        const iy_flow = Math.floor(this.y);
+        if (ix_flow >= 0 && ix_flow < width && iy_flow >= 0 && iy_flow < height) {
+            const index = iy_flow * width + ix_flow;
+            flowFieldX[index] += this.dx;
+            flowFieldY[index] += this.dy;
+        }
+    }
+}}
 
 class Signal {
     constructor(x, y, angle) {
