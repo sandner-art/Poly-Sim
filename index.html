@@ -328,6 +328,9 @@
         let animationId;
         let isPaused = false;
         let useGPU = false;
+        let isVortexing = false;
+        let lastMouseX = 0;
+        let lastMouseY = 0;
         let currentColorMode = 'natural';
 
 let gpu;
@@ -438,38 +441,43 @@ class Agent {
             }
         }
 
-        // --- SENSOR AND STEERING LOGIC ---
-        const sensorDist = params.sensorDistance;
-        const sensorAngle = params.sensorAngle;
-        const leftVal = sampleConductivity(this.x + Math.cos(this.angle - sensorAngle) * sensorDist, this.y + Math.sin(this.angle - sensorAngle) * sensorDist);
-        const rightVal = sampleConductivity(this.x + Math.cos(this.angle + sensorAngle) * sensorDist, this.y + Math.sin(this.angle + sensorAngle) * sensorDist);
-        const centerVal = sampleConductivity(this.x + Math.cos(this.angle) * sensorDist, this.y + Math.sin(this.angle) * sensorDist);
-        let steerAngle = 0;
-        if (centerVal > leftVal && centerVal > rightVal) { steerAngle = 0; } 
-        else if (leftVal > rightVal) { steerAngle = -sensorAngle * 0.1; } 
-        else if (rightVal > leftVal) { steerAngle = sensorAngle * 0.1; } 
-        else { steerAngle = (Math.random() - 0.5) * sensorAngle * 0.2; }
-        this.angle += steerAngle;
+    // --- EXTERNAL FORCES AND MOVEMENT ---
 
-        // --- EXTERNAL FORCES AND MOVEMENT ---
-        if (params.useCurvature) { const grad = sampleCurvatureGradient(this.x, this.y); this.angle += params.curvatureStrength * (this.dx * grad.y - this.dy * grad.x) * 0.1; }
-        this.dx = Math.cos(this.angle);
-        this.dy = Math.sin(this.angle);
-        if (globalFlow.x !== 0 || globalFlow.y !== 0) {
-            this.dx = this.dx * 0.95 + globalFlow.x * 0.05; this.dy = this.dy * 0.95 + globalFlow.y * 0.05;
-            const speed = Math.sqrt(this.dx*this.dx + this.dy*this.dy); if(speed > 0){ this.dx /= speed; this.dy /= speed; }
-            this.angle = Math.atan2(this.dy, this.dx);
+    // --- RE-INSERTED VORTEX LOGIC STARTS HERE ---
+    const ix = Math.floor(this.x);
+    const iy = Math.floor(this.y);
+    if (ix >= 0 && ix < width && iy >= 0 && iy < height) {
+        const forceIndex = iy * width + ix;
+        const forceX = externalForceField.x[forceIndex] || 0;
+        const forceY = externalForceField.y[forceIndex] || 0;
+        if (forceX !== 0 || forceY !== 0) {
+            const forceAngle = Math.atan2(forceY, forceX);
+            // This is the line that blends the agent's angle with the vortex's angle
+            this.angle = this.angle * 0.9 + forceAngle * 0.1;
         }
-        let newX = this.x + this.dx * params.stepSize * params.speed;
-        let newY = this.y + this.dy * params.stepSize * params.speed;
-        
-        // --- BOUNDARY AND MASK COLLISION ---
-        if (hasMask && sampleMask(newX, newY) < 0.5) {
-             this.angle += (Math.random() - 0.5) * Math.PI * 0.5;
-        } else {
-            this.x = (newX + width) % width;
-            this.y = (newY + height) % height;
-        }
+    }
+    // --- RE-INSERTED VORTEX LOGIC ENDS HERE ---
+
+    if (params.useCurvature) { const grad = sampleCurvatureGradient(this.x, this.y); this.angle += params.curvatureStrength * (this.dx * grad.y - this.dy * grad.x) * 0.1; }
+    
+    this.dx = Math.cos(this.angle);
+    this.dy = Math.sin(this.angle);
+    
+    if (globalFlow.x !== 0 || globalFlow.y !== 0) {
+        this.dx = this.dx * 0.95 + globalFlow.x * 0.05; this.dy = this.dy * 0.95 + globalFlow.y * 0.05;
+        const speed = Math.sqrt(this.dx*this.dx + this.dy*this.dy); if(speed > 0){ this.dx /= speed; this.dy /= speed; }
+        this.angle = Math.atan2(this.dy, this.dx);
+    }
+    let newX = this.x + this.dx * params.stepSize * params.speed;
+    let newY = this.y + this.dy * params.stepSize * params.speed;
+    
+    // --- BOUNDARY AND MASK COLLISION ---
+    if (hasMask && sampleMask(newX, newY) < 0.5) {
+         this.angle += (Math.random() - 0.5) * Math.PI * 0.5;
+    } else {
+        this.x = (newX + width) % width;
+        this.y = (newY + height) % height;
+    }
 
         // --- DEPOSITING DATA AND INCREMENTING AGE ---
         this.age++; // Increment agent's age each frame
@@ -1041,12 +1049,49 @@ function setupEventListeners() {
                 return event.target.closest && (event.target.closest('.controls') || event.target.closest('#fpsCounter') || event.target.closest('#graphToggleBtn'));
             }
 
-            // Mouse Events (unchanged)
-            canvas.addEventListener('mousedown', (e) => { if (isEventOnUI(e)) return; e.preventDefault(); isDrawing = true; startDrawing(e.clientX, e.clientY); });
-            document.addEventListener('mousemove', (e) => { if (isDrawing) spawnAgentsAt(e.clientX, e.clientY); });
-            document.addEventListener('mouseup', () => { isDrawing = false; });
-            document.addEventListener('mouseleave', () => { isDrawing = false; });
+            canvas.addEventListener('mousedown', (e) => {
+                if (isEventOnUI(e)) return;
+                e.preventDefault();
+
+                if (e.button === 0) { // Left mouse button
+                    isDrawing = true;
+                    startDrawing(e.clientX, e.clientY);
+                } else if (e.button === 1) { // Middle mouse button (scroll wheel click)
+                    isVortexing = true;
+                    lastMouseX = e.clientX;
+                    lastMouseY = e.clientY;
+                }
+            });
+
             
+            document.addEventListener('mousemove', (e) => {
+                if (isDrawing) {
+                    spawnAgentsAt(e.clientX, e.clientY);
+                } else if (isVortexing) {
+                    const dx = e.clientX - lastMouseX;
+                    // The strength and direction of the vortex is determined by horizontal mouse movement
+                    const strength = dx * 0.5; 
+                    const radius = 80; // A good fixed radius for the mouse vortex
+
+                    applyVortex(e.clientX, e.clientY, strength, radius);
+
+                    // Update last mouse position for the next frame
+                    lastMouseX = e.clientX;
+                    lastMouseY = e.clientY;
+                }
+            });
+            document.addEventListener('mouseup', (e) => {
+                if (e.button === 0) {
+                    isDrawing = false;
+                }
+                if (e.button === 1) {
+                    isVortexing = false;
+                }
+            });
+            document.addEventListener('mouseleave', () => {
+                isDrawing = false;
+                isVortexing = false;
+            });            
             // --- TOUCH EVENTS ---
             document.addEventListener('touchstart', (e) => {
                 if (isEventOnUI(e)) return;
