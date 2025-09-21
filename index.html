@@ -65,7 +65,7 @@
         .version-info a:hover { text-decoration: underline; }
 
 /* Style for the main dropdown box itself */
-#initPattern {
+#initPattern, #firingMode {
     width: 100%;
     padding: 8px;
     background-color: rgba(255, 255, 255, 0.1);
@@ -73,15 +73,26 @@
     border-radius: 6px;
     color: white;
     cursor: pointer;
-    /* The next 3 lines remove the default OS dropdown arrow */
+    /* Remove the default OS dropdown arrow */
     -webkit-appearance: none;
     -moz-appearance: none;
     appearance: none;
     /* Add our own custom arrow that fits the dark theme */
-    background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23FFFFFF%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E');
+    background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23FFFFFF%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E');
     background-repeat: no-repeat;
     background-position: right 10px center;
     background-size: 10px;
+}
+
+/* Style for the individual options in BOTH dropdown lists */
+#initPattern option, #firingMode option {
+    background: #1c1c1e; /* A dark background for the options list */
+    color: #eee;       /* A light text color for readability */
+}
+
+/* Optional: A subtle hover effect for the options in BOTH lists */
+#initPattern option:hover, #firingMode option:hover {
+    background: rgba(100, 150, 255, 0.3);
 }
 
 /* This is the key part: Style for the individual options in the list */
@@ -200,6 +211,7 @@
                 <div class="section">
                     <div class="section-title">Dynamic Environment</div>
                      <div class="checkbox-group"><input type="checkbox" id="animateSourcesToggle"><label for="animateSourcesToggle">Animate Sources & Sinks</label></div>
+                     <div class="checkbox-group"><input type="checkbox" id="animateWormholesToggle"><label for="animateWormholesToggle">Animate Wormholes</label></div>
                      <div class="checkbox-group"><input type="checkbox" id="animateMaskToggle"><label for="animateMaskToggle">Animate (Shift) Mask</label></div>
                 </div>
 
@@ -220,6 +232,15 @@
                     <div class="section-title">Geometric Criticality</div>
                     <div class="file-input-wrapper"><input type="file" class="file-input" id="curvatureMapInput" accept="image/*"><div class="file-input-display">Load Curvature Map</div></div>
 
+<div class="control-group" style="margin-bottom: 20px;">
+    <label style="margin-bottom: 10px;">Data-Driven Color Mode</label>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+        <div class="checkbox-group"><input type="radio" name="dataViz" id="viz-none" checked><label for="viz-none">Default</label></div>
+        <div class="checkbox-group"><input type="radio" name="dataViz" id="viz-age"><label for="viz-age">Agent Age</label></div>
+        <div class="checkbox-group"><input type="radio" name="dataViz" id="viz-recency"><label for="viz-recency">Recency</label></div>
+        <div class="checkbox-group"><input type="radio" name="dataViz" id="viz-direction"><label for="viz-direction">Direction</label></div>
+    </div>
+</div>                    
 <!-- ADD THIS BLOCK -->
 <div class="checkbox-group" style="justify-content: center; margin-bottom: 10px;">
     <input type="checkbox" id="curvatureAspectRatioToggle" checked>
@@ -230,6 +251,10 @@
                     <div class="button-grid" style="margin-top: -4px; margin-bottom: 10px;"><div class="action-btn maze-btn" onclick="clearCurvatureMap()">Clear Map</div></div>
                     <div class="checkbox-group"><input type="checkbox" id="curvatureToggle"><label for="curvatureToggle">Enable Curvature Field</label></div>
                     <div class="control-group"><label>Curvature Strength <span id="curvatureStrengthValue">0.5</span></label><input type="range" class="slider" id="curvatureStrength" min="0.1" max="2.0" value="0.5" step="0.1"></div>
+                    <div class="control-group">
+                        <label>Wormhole Size (Radius) <span id="wormholeSizeValue">15</span></label>
+                        <input type="range" class="slider" id="wormholeSize" min="5" max="60" value="15" step="1">
+                    </div>
                     <div class="button-grid"><div class="action-btn maze-btn" onclick="setWormholeMode(true)">Place Wormholes</div><div class="action-btn maze-btn" onclick="clearWormholes()">Clear Wormholes</div></div>
                 </div>
                 
@@ -248,17 +273,42 @@
                     <div class="control-group"><label>Speed <span id="speedValue">1.0</span></label><input type="range" class="slider" id="speed" min="0.1" max="5.0" value="1.0" step="0.1"></div>
                 </div>
 
-            <div class="section">
-                    <div class="section-title">Neural Features</div>
-                    <div class="checkbox-group">
-                        <input type="checkbox" id="neuronFiring">
-                        <label for="neuronFiring">Simulate Neuron Firing</label>
-                    </div>
-                    <div class="control-group">
-                        <label>Firing Rate <span id="firingRateValue">0.020</span></label>
-                        <input type="range" class="slider" id="firingRate" min="0.001" max="0.1" value="0.02" step="0.001">
-                    </div>
-                </div>                
+<!-- REPLACE THE OLD "Neural Features" SECTION WITH THIS -->
+<div class="section">
+    <div class="section-title">Neural Activity</div>
+    <div class="checkbox-group" style="margin-bottom: 15px;">
+        <input type="checkbox" id="neuronFiring">
+        <label for="neuronFiring">Enable Neural Activity</label>
+    </div>
+    
+    <div class="control-group">
+        <label for="firingMode">Firing Condition</label>
+        <select id="firingMode" style="width: 100%; padding: 8px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; color: white;">
+            <option value="random">Random Chance</option>
+            <option value="junction">At Junctions</option>
+            <option value="oscillator">Periodic (Oscillator)</option>
+        </select>
+    </div>
+
+    <div class="control-group">
+        <label>Firing Rate / Period <span id="firingRateValue">0.020</span></label>
+        <input type="range" class="slider" id="firingRate" min="0.001" max="0.1" value="0.02" step="0.001">
+    </div>
+
+    <div class="checkbox-group" style="margin-top: 15px; margin-bottom: 15px;">
+        <input type="checkbox" id="signalPropagation" checked>
+        <label for="signalPropagation">Enable Signal Propagation</label>
+    </div>
+
+    <div class="control-group">
+        <label>Signal Speed <span id="signalSpeedValue">2.0</span></label>
+        <input type="range" class="slider" id="signalSpeed" min="0.5" max="5.0" value="2.0" step="0.1">
+    </div>
+    <div class="control-group">
+        <label>Signal Duration <span id="signalDurationValue">150</span></label>
+        <input type="range" class="slider" id="signalDuration" min="20" max="500" value="150" step="10">
+    </div>
+</div>                
 
                 <div class="button-grid"><div class="action-btn reset-btn" onclick="resetSimulation()">Reset</div><div class="action-btn pause-btn" onclick="togglePause()">Pause</div></div>
                 
@@ -291,6 +341,11 @@ let agentDataTexture; // We will store agent data in a texture
         let firingField = [];
         let curvatureField = [];
         let wormholes = [];
+
+        let signals = []; // Array to hold active signal neuron objects
+        let signalField = []; // Array for the visual trail of signals
+
+        let ageField = [], directionField = [], recencyField = [];
         let externalForceField = { x: [], y: [] };
 
         let sources = [], sinks = [];
@@ -303,7 +358,7 @@ let agentDataTexture; // We will store agent data in a texture
         let isGraphVisible = false;
         let isFlowVisible = false;
         let globalFlow = { x: 0, y: 0 };
-        let dynamicEnv = { animateSources: false, animateMask: false };
+        let dynamicEnv = { animateSources: false, animateMask: false, animateWormholes: false }; // animateWormholes
         let maskOffset = { x: 0, y: 0 };
 
         let gpuSupported = false;
@@ -319,86 +374,202 @@ let agentDataTexture; // We will store agent data in a texture
         };
         const presets = {
             physarum: { agentCount: 50000, sensorAngle: 22.5 * Math.PI / 180, decayRate: 0.980, depositStrength: 0.10, speed: 1.0, diffusionRate: 0.3 },
-            plasma: { agentCount: 80000, sensorAngle: 45 * Math.PI / 180, decayRate: 0.950, depositStrength: 0.20, speed: 2.5, diffusionRate: 0.1 },
+            plasma: { agentCount: 5000, sensorAngle: 45 * Math.PI / 180, decayRate: 0.950, depositStrength: 0.20, speed: 2.5, diffusionRate: 0.1 },
             neural: { agentCount: 30000, sensorAngle: 30 * Math.PI / 180, decayRate: 0.995, depositStrength: 0.05, speed: 0.8, diffusionRate: 0.05 },
             scientific: { agentCount: 60000, sensorAngle: 35 * Math.PI / 180, decayRate: 0.985, depositStrength: 0.15, speed: 1.2, diffusionRate: 0.2 }
         };
         let currentPreset = 'physarum';
         const colorModes = { natural: { physarum: { color1: [0.05, 0.02, 0.0], color2: [0.4, 0.8, 0.2], color3: [0.9, 0.9, 0.4] }, plasma: { color1: [0.0, 0.0, 0.1], color2: [0.3, 0.1, 0.8], color3: [0.9, 0.7, 1.0] }, neural: { color1: [0.0, 0.05, 0.1], color2: [0.0, 0.4, 0.8], color3: [0.3, 0.8, 1.0] }, scientific: { color1: [0.1, 0.1, 0.1], color2: [0.8, 0.4, 0.0], color3: [1.0, 0.8, 0.2] } }, scientific: { physarum: { color1: [0.0, 0.0, 0.2], color2: [0.0, 0.8, 0.8], color3: [1.0, 1.0, 0.0] }, plasma: { color1: [0.2, 0.0, 0.0], color2: [0.8, 0.0, 0.8], color3: [1.0, 0.5, 0.0] }, neural: { color1: [0.0, 0.0, 0.0], color2: [0.0, 1.0, 0.0], color3: [1.0, 0.0, 0.0] }, scientific: { color1: [0.0, 0.0, 0.0], color2: [0.5, 0.5, 0.5], color3: [1.0, 1.0, 1.0] } }, thermal: { physarum: { color1: [0.0, 0.0, 0.2], color2: [0.8, 0.0, 0.0], color3: [1.0, 1.0, 0.0] }, plasma: { color1: [0.0, 0.0, 0.0], color2: [0.5, 0.0, 0.5], color3: [1.0, 0.0, 1.0] }, neural: { color1: [0.0, 0.0, 0.4], color2: [0.0, 0.5, 1.0], color3: [1.0, 1.0, 1.0] }, scientific: { color1: [0.0, 0.0, 0.5], color2: [1.0, 0.5, 0.0], color3: [1.0, 1.0, 0.5] } }, neon: { physarum: { color1: [0.1, 0.0, 0.1], color2: [0.0, 1.0, 0.5], color3: [0.5, 1.0, 1.0] }, plasma: { color1: [0.1, 0.0, 0.2], color2: [1.0, 0.0, 1.0], color3: [0.0, 1.0, 1.0] }, neural: { color1: [0.0, 0.1, 0.2], color2: [0.0, 1.0, 0.0], color3: [1.0, 1.0, 0.0] }, scientific: { color1: [0.2, 0.0, 0.2], color2: [1.0, 0.0, 0.0], color3: [0.0, 0.0, 1.0] } } };
         
-        class Agent {
-            constructor(x, y, angle) {
-                this.x = x || Math.random() * width; this.y = y || Math.random() * height;
-                this.angle = angle || Math.random() * Math.PI * 2; this.dx = Math.cos(this.angle); this.dy = Math.sin(this.angle);
-            }
-            update() {
-                for (const pair of wormholes) { for (let i = 0; i < 2; i++) { const w = pair[i]; if (Math.sqrt((this.x - w.x)**2 + (this.y - w.y)**2) < w.radius) { const otherW = pair[1-i]; this.x = otherW.x; this.y = otherW.y; this.angle += (Math.random() - 0.5) * 0.2; break; } } }
-                const sensorDist = params.sensorDistance; const sensorAngle = params.sensorAngle;
-                const leftVal = sampleConductivity(this.x + Math.cos(this.angle - sensorAngle) * sensorDist, this.y + Math.sin(this.angle - sensorAngle) * sensorDist);
-                const rightVal = sampleConductivity(this.x + Math.cos(this.angle + sensorAngle) * sensorDist, this.y + Math.sin(this.angle + sensorAngle) * sensorDist);
-                const centerVal = sampleConductivity(this.x + Math.cos(this.angle) * sensorDist, this.y + Math.sin(this.angle) * sensorDist);
-                let steerAngle = 0;
-                if (centerVal > leftVal && centerVal > rightVal) { steerAngle = 0; } else if (leftVal > rightVal) { steerAngle = -sensorAngle * 0.1; } else if (rightVal > leftVal) { steerAngle = sensorAngle * 0.1; } else { steerAngle = (Math.random() - 0.5) * sensorAngle * 0.2; }
-                this.angle += steerAngle;
-                // Apply external force (vortex)
-                const ix = Math.floor(this.x);
-                const iy = Math.floor(this.y);
-                if (ix >= 0 && ix < width && iy >= 0 && iy < height) {
-                    const forceIndex = iy * width + ix;
-                    const forceX = externalForceField.x[forceIndex] || 0;
-                    const forceY = externalForceField.y[forceIndex] || 0;
-                    if (forceX !== 0 || forceY !== 0) {
-                        const forceAngle = Math.atan2(forceY, forceX);
-                        this.angle = this.angle * 0.95 + forceAngle * 0.05;
+class Agent {
+    /**
+     * The Agent constructor initializes an agent with a position, angle, and age.
+     */
+    constructor(x, y, angle) {
+        this.x = x || Math.random() * width;
+        this.y = y || Math.random() * height;
+        this.angle = angle || Math.random() * Math.PI * 2;
+        this.dx = Math.cos(this.angle);
+        this.dy = Math.sin(this.angle);
+        this.age = 0; // Agents now track their age in frames.
+    }
+
+    /**
+     * The fire method creates a visual splash and launches a propagating signal.
+     */
+    fire() {
+        // 1. Create the local "splash" effect in the firingField
+        const fireRadius = 5;
+        for (let dy = -fireRadius; dy <= fireRadius; dy++) {
+            for (let dx = -fireRadius; dx <= fireRadius; dx++) {
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist <= fireRadius) {
+                    const fx = Math.floor(this.x + dx);
+                    const fy = Math.floor(this.y + dy);
+                    if (fx >= 0 && fx < width && fy >= 0 && fy < height) {
+                        const index = fy * width + fx;
+                        const strength = (1 - dist / fireRadius) * 0.3;
+                        firingField[index] = Math.min(1.0, (firingField[index] || 0) + strength);
                     }
-                }
-                if (params.useCurvature) { const grad = sampleCurvatureGradient(this.x, this.y); this.angle += params.curvatureStrength * (this.dx * grad.y - this.dy * grad.x) * 0.1; }
-                this.dx = Math.cos(this.angle); this.dy = Math.sin(this.angle);
-                if (globalFlow.x !== 0 || globalFlow.y !== 0) {
-                    this.dx = this.dx * 0.95 + globalFlow.x * 0.05; this.dy = this.dy * 0.95 + globalFlow.y * 0.05;
-                    const speed = Math.sqrt(this.dx*this.dx + this.dy*this.dy); if(speed > 0){ this.dx /= speed; this.dy /= speed; }
-                    this.angle = Math.atan2(this.dy, this.dx);
-                }
-
-let newX = this.x + this.dx * params.stepSize * params.speed;
-let newY = this.y + this.dy * params.stepSize * params.speed;
-
-// Hard boundary check: if mask value is less than 0.5, it's a wall.
-if (hasMask && sampleMask(newX, newY) < 0.5) {
-    // Bounce off the wall: change angle but do NOT update position.
-    this.angle += (Math.random() - 0.5) * Math.PI * 0.5;
-} else {
-    // Not a wall, so update the agent's position.
-    this.x = (newX + width) % width;
-    this.y = (newY + height) % height;
-}
-
-                depositAt(Math.floor(this.x), Math.floor(this.y), params.depositStrength);
-// --- NEURON FIRING LOGIC ---
-                if (params.neuronFiring && Math.random() < params.firingRate) {
-                    const fireRadius = 5;
-                    for (let dy = -fireRadius; dy <= fireRadius; dy++) {
-                        for (let dx = -fireRadius; dx <= fireRadius; dx++) {
-                            const dist = Math.sqrt(dx*dx + dy*dy);
-                            if (dist <= fireRadius) {
-                                const fx = Math.floor(this.x + dx);
-                                const fy = Math.floor(this.y + dy);
-                                if (fx >= 0 && fx < width && fy >= 0 && fy < height) {
-                                    const index = fy * width + fx;
-                                    const strength = (1 - dist / fireRadius) * 0.3;
-                                    firingField[index] = Math.min(1.0, (firingField[index] || 0) + strength);
-                                }
-                            }
-                        }
-                    }
-                }                
-                if (isFlowVisible) {
-                    const ix = Math.floor(this.x); const iy = Math.floor(this.y);
-                    if (ix >= 0 && ix < width && iy >= 0 && iy < height) { const index = iy * width + ix; flowFieldX[index] += this.dx; flowFieldY[index] += this.dy; }
                 }
             }
         }
+        // 2. Launch a propagating signal object if enabled
+        if (document.getElementById('signalPropagation').checked && signals.length < 500) {
+            signals.push(new Signal(this.x, this.y, this.angle));
+        }
+    }
+
+    /**
+     * The update method contains the core logic for agent movement, sensing, and interaction.
+     */
+    update() {
+        // --- WORMHOLE LOGIC ---
+        for (const pair of wormholes) {
+            for (let i = 0; i < 2; i++) {
+                const w = pair[i];
+                if (Math.sqrt((this.x - w.x) ** 2 + (this.y - w.y) ** 2) < w.radius) {
+                    const otherW = pair[1 - i];
+                    this.x = otherW.x;
+                    this.y = otherW.y;
+                    this.angle += (Math.random() - 0.5) * 0.2;
+                    break;
+                }
+            }
+        }
+
+        // --- SENSOR AND STEERING LOGIC ---
+        const sensorDist = params.sensorDistance;
+        const sensorAngle = params.sensorAngle;
+        const leftVal = sampleConductivity(this.x + Math.cos(this.angle - sensorAngle) * sensorDist, this.y + Math.sin(this.angle - sensorAngle) * sensorDist);
+        const rightVal = sampleConductivity(this.x + Math.cos(this.angle + sensorAngle) * sensorDist, this.y + Math.sin(this.angle + sensorAngle) * sensorDist);
+        const centerVal = sampleConductivity(this.x + Math.cos(this.angle) * sensorDist, this.y + Math.sin(this.angle) * sensorDist);
+        let steerAngle = 0;
+        if (centerVal > leftVal && centerVal > rightVal) { steerAngle = 0; } 
+        else if (leftVal > rightVal) { steerAngle = -sensorAngle * 0.1; } 
+        else if (rightVal > leftVal) { steerAngle = sensorAngle * 0.1; } 
+        else { steerAngle = (Math.random() - 0.5) * sensorAngle * 0.2; }
+        this.angle += steerAngle;
+
+        // --- EXTERNAL FORCES AND MOVEMENT ---
+        if (params.useCurvature) { const grad = sampleCurvatureGradient(this.x, this.y); this.angle += params.curvatureStrength * (this.dx * grad.y - this.dy * grad.x) * 0.1; }
+        this.dx = Math.cos(this.angle);
+        this.dy = Math.sin(this.angle);
+        if (globalFlow.x !== 0 || globalFlow.y !== 0) {
+            this.dx = this.dx * 0.95 + globalFlow.x * 0.05; this.dy = this.dy * 0.95 + globalFlow.y * 0.05;
+            const speed = Math.sqrt(this.dx*this.dx + this.dy*this.dy); if(speed > 0){ this.dx /= speed; this.dy /= speed; }
+            this.angle = Math.atan2(this.dy, this.dx);
+        }
+        let newX = this.x + this.dx * params.stepSize * params.speed;
+        let newY = this.y + this.dy * params.stepSize * params.speed;
         
+        // --- BOUNDARY AND MASK COLLISION ---
+        if (hasMask && sampleMask(newX, newY) < 0.5) {
+             this.angle += (Math.random() - 0.5) * Math.PI * 0.5;
+        } else {
+            this.x = (newX + width) % width;
+            this.y = (newY + height) % height;
+        }
+
+        // --- DEPOSITING DATA AND INCREMENTING AGE ---
+        this.age++; // Increment agent's age each frame
+        const floorX = Math.floor(this.x);
+        const floorY = Math.floor(this.y);
+        depositAt(floorX, floorY, params.depositStrength);
+
+        if (floorX >= 0 && floorX < width && floorY >= 0 && floorY < height) {
+            const index = floorY * width + floorX;
+            // Deposit data for visualizations
+            ageField[index] = this.age;
+            directionField[index] = this.angle / (Math.PI * 2); // Normalize angle to [0, 1]
+            recencyField[index] = 1.0; // Mark this spot as recently active
+        }
+
+        // --- NEW, IMPROVED NEURAL FIRING LOGIC ---
+        if (params.neuronFiring) {
+            const firingMode = document.getElementById('firingMode').value;
+            const firingRate = parseFloat(document.getElementById('firingRate').value);
+            let shouldFire = false;
+
+            switch (firingMode) {
+                case 'random':
+                    shouldFire = Math.random() < firingRate;
+                    break;
+                case 'junction':
+                    // Fire if all three forward sensors detect a strong path
+                    if (centerVal > 0.2 && leftVal > 0.15 && rightVal > 0.15) {
+                        shouldFire = Math.random() < firingRate * 5.0; // More likely at junctions
+                    }
+                    break;
+                case 'oscillator':
+                    // The rate slider now controls the period
+                    const period = Math.floor(1 / (firingRate * 2));
+                    if (this.age > 0 && this.age % period === 0) {
+                        shouldFire = true;
+                    }
+                    break;
+            }
+
+            if (shouldFire) {
+                this.fire();
+            }
+        }
+
+        // --- FLOW FIELD DEPOSIT ---
+        if (isFlowVisible) {
+            const ix = Math.floor(this.x);
+            const iy = Math.floor(this.y);
+            if (ix >= 0 && ix < width && iy >= 0 && iy < height) {
+                const index = iy * width + ix;
+                flowFieldX[index] += this.dx;
+                flowFieldY[index] += this.dy;
+            }
+        }
+    }
+}
+
+class Signal {
+    constructor(x, y, angle) {
+        this.x = x;
+        this.y = y;
+        this.angle = angle;
+        this.speed = parseFloat(document.getElementById('signalSpeed').value) || 2.0;
+        this.ttl = parseInt(document.getElementById('signalDuration').value) || 150; // Time to live in frames
+    }
+
+    update() {
+        this.ttl--;
+
+        // Signals move by sensing the path, just like agents but simpler
+        const sensorDist = params.sensorDistance * 0.5;
+        const sensorAngle = params.sensorAngle;
+        
+        const leftVal = sampleConductivity(this.x + Math.cos(this.angle - sensorAngle) * sensorDist, this.y + Math.sin(this.angle - sensorAngle) * sensorDist);
+        const rightVal = sampleConductivity(this.x + Math.cos(this.angle + sensorAngle) * sensorDist, this.y + Math.sin(this.angle + sensorAngle) * sensorDist);
+        const centerVal = sampleConductivity(this.x + Math.cos(this.angle) * sensorDist, this.y + Math.sin(this.angle) * sensorDist);
+        
+        if (centerVal > leftVal && centerVal > rightVal) { /* continue straight */ } 
+        else if (leftVal > rightVal) { this.angle -= sensorAngle * 0.2; } 
+        else if (rightVal > leftVal) { this.angle += sensorAngle * 0.2; }
+        else { this.angle += (Math.random() - 0.5) * Math.PI * 0.25; } // Random turn if lost
+
+        this.x += Math.cos(this.angle) * this.speed;
+        this.y += Math.sin(this.angle) * this.speed;
+
+        // Deposit its light into the signalField
+        const ix = Math.floor(this.x);
+        const iy = Math.floor(this.y);
+        if (ix >= 0 && ix < width && iy >= 0 && iy < height) {
+            const index = iy * width + ix;
+            signalField[index] = 1.0; // Leave a bright, temporary trail
+        }
+
+        // Boundary wrap
+        this.x = (this.x + width) % width;
+        this.y = (this.y + height) % height;
+    }
+}        
+
         function sampleConductivity(x, y) { x = Math.floor((x + width) % width); y = Math.floor((y + height) % height); if (x < 0 || x >= width || y < 0 || y >= height) return 0; return conductivityField[y * width + x] || 0; }
         function sampleMask(x, y) { if (!hasMask) return 1.0; const ix = Math.floor((x + maskOffset.x + width) % width); const iy = Math.floor((y + maskOffset.y + height) % height); if (ix < 0 || ix >= width || iy < 0 || iy >= height) return 0.0; return maskField[iy * width + ix]; }
         function sampleCurvatureGradient(x, y) { x = Math.floor((x + width) % width); y = Math.floor((y + height) % height); const C = (v, max) => Math.max(0, Math.min(max - 1, v)); const x1 = C(x - 1, width), x2 = C(x + 1, width); const y1 = C(y - 1, height), y2 = C(y + 1, height); return { x: (curvatureField[y * width + x2] - curvatureField[y * width + x1]) / 2.0, y: (curvatureField[y2 * width + x] - curvatureField[y1 * width + x]) / 2.0 }; }
@@ -412,6 +583,14 @@ if (hasMask && sampleMask(newX, newY) < 0.5) {
             width = Math.max(1, baseWidth); height = Math.max(1, baseHeight);
             
             conductivityField = new Float32Array(width * height); tempField = new Float32Array(width * height); firingField = new Float32Array(width * height);
+
+            signalField = new Float32Array(width * height);
+
+            ageField = new Float32Array(width * height);
+            directionField = new Float32Array(width * height);
+            recencyField = new Float32Array(width * height);
+            tempField = new Float32Array(width * height);
+    
             flowFieldX = new Float32Array(width * height); flowFieldY = new Float32Array(width * height);
             externalForceField.x = new Float32Array(width * height);
             externalForceField.y = new Float32Array(width * height);
@@ -531,8 +710,29 @@ function updateSimulation() {
     handleSources(); // Sources/sinks are infrequent, keep on CPU for simplicity
 
     // (Your dynamic env and mask animation logic can stay here)
-    if (dynamicEnv.animateSources) { /* ... */ }
-    if (dynamicEnv.animateMask && hasMask) { /* ... */ }
+            if (dynamicEnv.animateSources) {
+                const time = Date.now() * 0.0002;
+                sources.forEach((s, i) => { s.x += Math.sin(time + i) * 0.5; s.y += Math.cos(time - i) * 0.5; });
+                sinks.forEach((s, i) => { s.x += Math.cos(time + i * 2) * 0.4; s.y += Math.sin(time - i * 2) * 0.4; });
+            }
+            // --- wormholes ---
+            if (dynamicEnv.animateWormholes) {
+                const time = Date.now() * 0.0003;
+                wormholes.forEach((pair, i) => {
+                    // Animate both wormholes in a pair with slightly different patterns
+                    const w1 = pair[0];
+                    const w2 = pair[1];
+                    w1.x = w1.origX + Math.sin(time + i) * 15; // Oscillate within a 15-pixel radius
+                    w1.y = w1.origY + Math.cos(time + i) * 15;
+                    w2.x = w2.origX + Math.cos(time + i * 0.5) * 10;
+                    w2.y = w2.origY + Math.sin(time + i * 0.5) * 10;
+                });
+            }
+            // --- END BLOCK wormholes ---            
+            if (dynamicEnv.animateMask && hasMask) {
+                maskOffset.x = (maskOffset.x + 0.5) % width;
+                maskOffset.y = (maskOffset.y + 0.25) % height;
+            }
 
     if (useGPU && gpuUpdateField) {
         // --- GPU PATH ---
@@ -547,6 +747,7 @@ function updateSimulation() {
             }
         }
         agents = survivingAgents;
+
         
         // Now, update the entire field on the GPU
         gpuUpdateField(conductivityField, width, height, params.decayRate, presets[currentPreset].diffusionRate);
@@ -563,7 +764,23 @@ function updateSimulation() {
         }
         agents = survivingAgents;
 
-        for (let i = 0; i < conductivityField.length; i++) {
+// --- ADD THIS BLOCK TO UPDATE SIGNALS ---
+for (let i = signals.length - 1; i >= 0; i--) {
+    signals[i].update();
+    if (signals[i].ttl <= 0) {
+        signals.splice(i, 1); // Remove dead signals
+    }
+}
+for (let i = 0; i < signalField.length; i++) {
+    signalField[i] *= 0.88; // Signal trail fades faster
+}
+// --- END BLOCK ---
+
+    for (let i = 0; i < recencyField.length; i++) {
+        recencyField[i] *= 0.92; // Recency fades relatively quickly
+    }
+
+    for (let i = 0; i < conductivityField.length; i++) {
             conductivityField[i] *= params.decayRate;
         }
         // (neuron firing and flow field logic can stay here for the CPU path)
@@ -597,21 +814,133 @@ function updateSimulation() {
 
             const imageData = ctx.createImageData(width, height); const data = imageData.data;
             const colors = colorModes[currentColorMode][currentPreset];
-            for (let i = 0; i < conductivityField.length; i++) {
-                let intensity = Math.pow(Math.min(1, conductivityField[i]), 0.5); if (params.neuronFiring && firingField[i] > 0) { intensity = Math.min(1, intensity + firingField[i] * 0.5); }
-                let r, g, b; if (intensity < 0.5) { const t = intensity * 2; r = colors.color1[0] * (1 - t) + colors.color2[0] * t; g = colors.color1[1] * (1 - t) + colors.color2[1] * t; b = colors.color1[2] * (1 - t) + colors.color2[2] * t; } else { const t = (intensity - 0.5) * 2; r = colors.color2[0] * (1 - t) + colors.color3[0] * t; g = colors.color2[1] * (1 - t) + colors.color3[1] * t; b = colors.color2[2] * (1 - t) + colors.color3[2] * t; }
-                const pixelIndex = i * 4; data[pixelIndex] = r * 255; data[pixelIndex + 1] = g * 255; data[pixelIndex + 2] = b * 255; data[pixelIndex + 3] = 255;
-            }
+const vizAge = document.getElementById('viz-age').checked;
+const vizRecency = document.getElementById('viz-recency').checked;
+const vizDirection = document.getElementById('viz-direction').checked;
+
+// Helper function to convert HSL to RGB, for our direction map
+// h, s, l are in [0,1]; r, g, b are in [0, 255]
+function hslToRgb(h, s, l) {
+    let r, g, b;
+    if (s == 0) { r = g = b = l; } 
+    else {
+        const hue2rgb = (p, q, t) => {
+            if (t < 0) t += 1;
+            if (t > 1) t -= 1;
+            if (t < 1/6) return p + (q - p) * 6 * t;
+            if (t < 1/2) return q;
+            if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+            return p;
+        }
+        const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+        const p = 2 * l - q;
+        r = hue2rgb(p, q, h + 1/3);
+        g = hue2rgb(p, q, h);
+        b = hue2rgb(p, q, h - 1/3);
+    }
+    return [r * 255, g * 255, b * 255];
+}
+
+for (let i = 0; i < conductivityField.length; i++) {
+    const pixelIndex = i * 4;
+    let r = 0, g = 0, b = 0;
+    const baseIntensity = Math.pow(Math.min(1, conductivityField[i]), 0.5);
+
+    if (baseIntensity < 0.01) { // If there is almost no trail, just draw black
+        data[pixelIndex] = 0; data[pixelIndex + 1] = 0; data[pixelIndex + 2] = 0; data[pixelIndex + 3] = 255;
+        continue;
+    }
+
+// --- ADD THIS ENTIRE `else if` BLOCK ---
+else if (signalField[i] > 0.05) {
+    // Propagating signals are a bright, electric cyan
+    const t = Math.min(1, signalField[i] * 2.0);
+    r = t * 180;
+    g = t * 255;
+    b = t * 255;
+} 
+// --- END BLOCK ---    
+    else if (vizAge) {
+        // Agent Age: Maps age from 0-1500 frames to a blue (young) -> yellow (mid) -> red (old) spectrum
+        const age = ageField[i];
+        const t = Math.min(1, age / 1500.0);
+        if (t < 0.5) {
+            r = (t * 2) * 255; g = (t * 2) * 255; b = (1 - t * 2) * 255;
+        } else {
+            r = 255; g = (1 - (t - 0.5) * 2) * 255; b = 0;
+        }
+
+    } else if (vizRecency) {
+        // Recency: Maps activity from 0-1 to a black -> magenta -> white spectrum
+        const t = Math.min(1, recencyField[i] * 3.0); // Multiply to make it brighter
+        r = t * 255; g = t * 100; b = t * 255;
+
+    } else if (vizDirection) {
+        // Direction: Maps angle (0-1) to an HSL color wheel
+        const hue = directionField[i];
+        const lightness = 0.5 * baseIntensity + 0.2; // Brighter on stronger paths
+        [r, g, b] = hslToRgb(hue, 1.0, lightness);
+
+    } else {
+        // Default Mode (your original logic)
+        let intensity = baseIntensity;
+        if (params.neuronFiring && firingField[i] > 0) {
+            intensity = Math.min(1, intensity + firingField[i] * 0.5);
+        }
+        if (intensity < 0.5) {
+            const t = intensity * 2;
+            r = (colors.color1[0] * (1 - t) + colors.color2[0] * t) * 255;
+            g = (colors.color1[1] * (1 - t) + colors.color2[1] * t) * 255;
+            b = (colors.color1[2] * (1 - t) + colors.color2[2] * t) * 255;
+        } else {
+            const t = (intensity - 0.5) * 2;
+            r = (colors.color2[0] * (1 - t) + colors.color3[0] * t) * 255;
+            g = (colors.color2[1] * (1 - t) + colors.color3[1] * t) * 255;
+            b = (colors.color2[2] * (1 - t) + colors.color3[2] * t) * 255;
+        }
+    }
+    
+    data[pixelIndex] = r;
+    data[pixelIndex + 1] = g;
+    data[pixelIndex + 2] = b;
+    data[pixelIndex + 3] = 255;
+}
             const tempCanvas = document.createElement('canvas'); tempCanvas.width = width; tempCanvas.height = height; const tempCtx = tempCanvas.getContext('2d'); tempCtx.putImageData(imageData, 0, 0);
             ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.imageSmoothingEnabled = false; ctx.drawImage(tempCanvas, 0, 0, canvas.width, canvas.height);
             
             if (isFlowVisible) renderFlowField();
             
             ctx.lineWidth = 2;
+            ctx.strokeStyle = '#FF00FF';
             sources.forEach(s => { ctx.beginPath(); ctx.arc(s.x / width * canvas.width, s.y / height * canvas.height, 10, 0, 2*Math.PI); ctx.strokeStyle = '#00FFFF'; ctx.stroke(); });
             sinks.forEach(s => { ctx.beginPath(); ctx.arc(s.x / width * canvas.width, s.y / height * canvas.height, s.radius/height*canvas.height, 0, 2*Math.PI); ctx.strokeStyle = '#FF0055'; ctx.stroke(); });
-            }
+        wormholes.forEach(pair => {
+    pair.forEach(w => {
+        ctx.beginPath();
+        ctx.arc(w.x / width * canvas.width, w.y / height * canvas.height, w.radius, 0, 2 * Math.PI);
+        ctx.stroke();
+    });
+    // Optional: draw a faint line connecting the pair
+    ctx.beginPath();
+    ctx.moveTo(pair[0].x / width * canvas.width, pair[0].y / height * canvas.height);
+    ctx.lineTo(pair[1].x / width * canvas.width, pair[1].y / height * canvas.height);
+    ctx.globalAlpha = 0.3;
+    ctx.stroke();
+    ctx.globalAlpha = 1.0;
+});
+
+// Draw the temporary wormhole if user is in the middle of placing a pair
+if (tempWormhole) {
+    ctx.beginPath();
+    ctx.arc(tempWormhole.x / width * canvas.width, tempWormhole.y / height * canvas.height, tempWormhole.radius, 0, 2 * Math.PI);
+    ctx.setLineDash([5, 5]); // Dashed line for temporary placement
+    ctx.stroke();
+    ctx.setLineDash([]);
+}    
+        }
     }
+
+
         function renderFlowField() {
             ctx.strokeStyle = "rgba(255, 255, 255, 0.5)"; ctx.lineWidth = 1;
             const gridSize = 20; const scale = 15;
@@ -854,6 +1183,8 @@ document.getElementById('randomizeSizeToggle').addEventListener('change', initia
             document.getElementById('graphToggleBtn').addEventListener('click', toggleAnalyticsGraph);
             document.getElementById('flowFieldToggle').addEventListener('change', e => isFlowVisible = e.target.checked);
             document.getElementById('animateSourcesToggle').addEventListener('change', e => dynamicEnv.animateSources = e.target.checked);
+            document.getElementById('animateWormholesToggle').addEventListener('change', e => dynamicEnv.animateWormholes = e.target.checked);
+
             document.getElementById('animateMaskToggle').addEventListener('change', e => dynamicEnv.animateMask = e.target.checked);
             document.getElementById('agentCount').addEventListener('input', (e) => { params.agentCount = parseInt(e.target.value); updateSliderDisplays(); initializeSimulation(); });
             document.getElementById('sensorAngle').addEventListener('input', (e) => { params.sensorAngle = parseFloat(e.target.value) * Math.PI / 180; updateSliderDisplays(); });
@@ -861,6 +1192,13 @@ document.getElementById('randomizeSizeToggle').addEventListener('change', initia
             document.getElementById('depositStrength').addEventListener('input', (e) => { params.depositStrength = parseFloat(e.target.value); updateSliderDisplays(); });
             document.getElementById('speed').addEventListener('input', (e) => { params.speed = parseFloat(e.target.value); updateSliderDisplays(); });
             document.getElementById('curvatureStrength').addEventListener('input', (e) => { params.curvatureStrength = parseFloat(e.target.value); updateSliderDisplays(); });
+            document.getElementById('wormholeSize').addEventListener('input', updateSliderDisplays);
+
+            // --- ADD THESE NEW LISTENERS ---
+            document.getElementById('signalSpeed').addEventListener('input', updateSliderDisplays);
+            document.getElementById('signalDuration').addEventListener('input', updateSliderDisplays);
+            // --- END OF NEW LISTENERS ---
+
             document.getElementById('globalFlowX').addEventListener('input', (e) => { globalFlow.x = parseFloat(e.target.value); updateSliderDisplays(); });
             document.getElementById('globalFlowY').addEventListener('input', (e) => { globalFlow.y = parseFloat(e.target.value); updateSliderDisplays(); });
             document.getElementById('maskInput').addEventListener('change', loadMaskFile);
@@ -903,6 +1241,7 @@ document.getElementById('randomizeSizeToggle').addEventListener('change', initia
         }
         
         function updateSliderDisplays() {
+            // --- Standard Parameters ---
             document.getElementById('agentCountValue').textContent = params.agentCount.toLocaleString();
             document.getElementById('sensorAngleValue').textContent = (params.sensorAngle * 180 / Math.PI).toFixed(1) + '°';
             document.getElementById('decayRateValue').textContent = params.decayRate.toFixed(3);
@@ -911,6 +1250,26 @@ document.getElementById('randomizeSizeToggle').addEventListener('change', initia
             document.getElementById('curvatureStrengthValue').textContent = params.curvatureStrength.toFixed(1);
             document.getElementById('globalFlowXValue').textContent = globalFlow.x.toFixed(1);
             document.getElementById('globalFlowYValue').textContent = globalFlow.y.toFixed(1);
+            document.getElementById('patternDetailValue').textContent = document.getElementById('patternDetail').value;
+
+            // --- ADDED: Neural Activity Parameters ---
+            // Ensure the neural sliders are present before trying to read them
+            const firingRateSlider = document.getElementById('firingRate');
+            if (firingRateSlider) {
+                document.getElementById('firingRateValue').textContent = parseFloat(firingRateSlider.value).toFixed(3);
+            }
+            const signalSpeedSlider = document.getElementById('signalSpeed');
+            if (signalSpeedSlider) {
+                document.getElementById('signalSpeedValue').textContent = parseFloat(signalSpeedSlider.value).toFixed(1);
+            }
+            const signalDurationSlider = document.getElementById('signalDuration');
+            if (signalDurationSlider) {
+                document.getElementById('signalDurationValue').textContent = signalDurationSlider.value;
+            }
+            const wormholeSizeSlider = document.getElementById('wormholeSize');
+            if (wormholeSizeSlider) {
+                document.getElementById('wormholeSizeValue').textContent = wormholeSizeSlider.value;
+            }
         }
 
         function setPreset(presetName) {
@@ -934,6 +1293,9 @@ document.getElementById('randomizeSizeToggle').addEventListener('change', initia
 
         function resetSimulation() {
             conductivityField.fill(0); tempField.fill(0); firingField.fill(0);
+
+            ageField.fill(0); directionField.fill(0); recencyField.fill(0);
+            signals = []; signalField.fill(0);
             flowFieldX.fill(0); flowFieldY.fill(0);
             analyticsData = { efficiency: [], conductivity: [], agents: [] };
             clearSourcesAndSinks(); clearMask(); clearCurvatureMap(); clearWormholes();
@@ -1102,8 +1464,25 @@ for (let i = 0; i < data.length; i += 4) {
         function setWormholeMode(enabled) { wormholePlacingMode = enabled; canvas.style.cursor = enabled ? 'cell' : 'crosshair'; if (!enabled) tempWormhole = null; }
         function placeWormhole(screenX, screenY) {
             const coords = { x: screenX / canvas.width * width, y: screenY / canvas.height * height };
-            if (!tempWormhole) { tempWormhole = { x: coords.x, y: coords.y, radius: 15 }; }
-            else { wormholes.push([tempWormhole, { x: coords.x, y: coords.y, radius: 15 }]); tempWormhole = null; setWormholeMode(false); }
+            
+            // Read the current size from the slider
+            const radius = parseFloat(document.getElementById('wormholeSize').value);
+
+            const newWormhole = { 
+                x: coords.x, 
+                y: coords.y, 
+                radius: radius, // Use the value from the slider
+                origX: coords.x, 
+                origY: coords.y 
+            };
+
+            if (!tempWormhole) {
+                tempWormhole = newWormhole;
+            } else {
+                wormholes.push([tempWormhole, newWormhole]);
+                tempWormhole = null;
+                setWormholeMode(false);
+            }
         }
         function clearWormholes() { wormholes = []; tempWormhole = null; setWormholeMode(false); }
         function toggleAnalyticsGraph() { isGraphVisible = !isGraphVisible; graphCanvas.classList.toggle('visible', isGraphVisible); }
